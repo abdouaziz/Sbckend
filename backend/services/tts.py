@@ -1,7 +1,7 @@
 import os
 import re
 import tempfile
-
+import torch 
 from TTS.utils.synthesizer import Synthesizer
 
 from backend.services.log import setup_logging, get_logger
@@ -60,9 +60,14 @@ def load_model(language: str) -> Synthesizer:
     if not os.path.exists(config_path):
         raise TTSException(f"Config not found at {config_path}")
 
+    use_cuda = torch.cuda.is_available()
+    
     try:
-        synthesizer = Synthesizer(model_path, config_path)
-        logger.info(f"TTS model loaded successfully for language: {language}")
+        synthesizer = Synthesizer(model_path, config_path, use_cuda=use_cuda)
+        logger.info(
+            f"TTS model loaded successfully for language: {language} "
+            f"(device: {'cuda' if use_cuda else 'cpu'})"
+        )
         return synthesizer
     except Exception as e:
         logger.error(f"Error loading model for {language}: {e}")
