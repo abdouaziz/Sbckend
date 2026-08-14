@@ -7,7 +7,7 @@ from TTS.utils.synthesizer import Synthesizer
 from backend.services.log import setup_logging, get_logger
 
 setup_logging()
-logger = get_logger("TTS")
+logger = get_logger("TTS-API")
 
 SUPPORTED_LANGUAGES = ["wolof","pulaar"]
 
