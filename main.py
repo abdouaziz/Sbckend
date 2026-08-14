@@ -18,12 +18,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.get("/ping")
 def ping():
     return {"status": "ok"}
-
-
 
 @app.post("/synthesize")
 async def synthesize(text: str, language: str = "wolof"):
