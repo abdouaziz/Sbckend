@@ -20,6 +20,7 @@ app.add_middleware(
 
 @app.get("/ping")
 def ping():
+    logger.info(f"Health Check")
     return {"status": "ok"}
 
 @app.post("/synthesize")
@@ -28,4 +29,5 @@ async def synthesize(text: str, language: str = "wolof"):
         audio_file_path = tts_vocalizer(text, language)
         return FileResponse(audio_file_path, media_type="audio/wav", filename="output.wav")
     except TTSException as e:
+        logger.error(f"{e}")
         raise HTTPException(status_code=400, detail=str(e))
