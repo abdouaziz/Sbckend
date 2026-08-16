@@ -1,7 +1,10 @@
 import os
 import re
 import tempfile
-import torch 
+import threading
+import numpy as np
+import librosa
+import torch
 from TTS.utils.synthesizer import Synthesizer
 
 from backend.services.log import setup_logging, get_logger
@@ -45,6 +48,9 @@ NUMBER_WORDS = {
 _NUMBER_PATTERN = re.compile(r"\d+")
 
 _synthesizers: dict[str, Synthesizer] = {}
+_synthesizer_locks: dict[str, threading.Lock] = {}
+
+PITCH_SEMITONE_RANGE = 4.0  # pitch=-1.0 -> -4 semitones, pitch=1.0 -> +4 semitones
 
 
 class TTSException(Exception):
@@ -77,6 +83,7 @@ def load_model(language: str) -> Synthesizer:
 def get_synthesizer(language: str) -> Synthesizer:
     if language not in _synthesizers:
         _synthesizers[language] = load_model(language)
+        _synthesizer_locks[language] = threading.Lock()
     return _synthesizers[language]
 
 
@@ -84,7 +91,25 @@ def convert_numbers_to_french(text: str) -> str:
     return _NUMBER_PATTERN.sub(lambda m: NUMBER_WORDS.get(m.group(), m.group()), text)
 
 
-def tts_vocalizer(text: str, language: str = "wolof") -> str:
+
+def verify_pitch(value):
+    if value >= -1.0 and value <= 1.0:
+        return True 
+    return False
+
+def verify_speed(value):
+    if value >= 0.0 and value <= 2.0:
+        return True 
+    return False
+
+def verify_audio_setting(pitch: float, speed: float):
+    if verify_pitch(pitch) and verify_speed(speed):
+        return True
+    return False
+
+ 
+
+def tts_vocalizer(text: str, language: str = "wolof" , speed:float=1.0 , pitch:float=0.0) -> str:
     if language not in SUPPORTED_LANGUAGES:
         raise TTSException(f"Unsupported language: {language}")
 
@@ -96,8 +121,24 @@ def tts_vocalizer(text: str, language: str = "wolof") -> str:
 
     synthesizer = get_synthesizer(language)
 
+    if not verify_audio_setting(pitch, speed):
+        raise TTSException(f"Invalid audio setting pitch: {pitch} speed: {speed}")
+
+    # VITS length_scale is inverse to speed: lower length_scale -> faster speech.
+    length_scale = 1.0 / max(speed, 1e-3)
+
     try:
-        wavs = synthesizer.tts(text=translation)
+        with _synthesizer_locks[language]:
+            synthesizer.tts_model.length_scale = length_scale
+            wavs = synthesizer.tts(text=translation)
+
+        if pitch != 0.0:
+            wavs = librosa.effects.pitch_shift(
+                y=np.asarray(wavs, dtype=np.float32),
+                sr=synthesizer.output_sample_rate,
+                n_steps=pitch * PITCH_SEMITONE_RANGE,
+            )
+
     except Exception as e:
         logger.error(f"Error during speech synthesis: {e}")
         raise TTSException(f"Failed to synthesize speech: {e}") from e
@@ -108,3 +149,9 @@ def tts_vocalizer(text: str, language: str = "wolof") -> str:
     synthesizer.save_wav(wavs, temp_file_path)
     logger.info(f"Audio saved to: {temp_file_path}")
     return temp_file_path
+
+
+
+
+
+

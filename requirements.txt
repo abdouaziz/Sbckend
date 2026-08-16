@@ -4,4 +4,6 @@ python-multipart
 requests
 torch
 TTS
+librosa
+numpy
 huggingface_hub

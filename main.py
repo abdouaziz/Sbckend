@@ -24,9 +24,9 @@ def ping():
     return {"status": "ok"}
 
 @app.post("/synthesize")
-async def synthesize(text: str, language: str = "wolof"):
+async def synthesize(text: str, language: str = "wolof", speed: float = 1.0, pitch: float = 0.0):
     try:
-        audio_file_path = tts_vocalizer(text, language)
+        audio_file_path = tts_vocalizer(text, language, speed=speed, pitch=pitch)
         return FileResponse(audio_file_path, media_type="audio/wav", filename="output.wav")
     except TTSException as e:
         logger.error(f"{e}")
