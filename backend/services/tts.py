@@ -14,6 +14,9 @@ logger = get_logger("TTS-API")
 
 SUPPORTED_LANGUAGES = ["wolof","pulaar"]
 
+DEFAULT_SPEED_BY_LANGUAGE = {"wolof": 1.2, "pulaar": 1.0}
+DEFAULT_PITCH = 0.0
+
 def _checkpoints_dir() -> str:
     env_dir = os.environ.get("CHECKPOINTS_DIR")
     if env_dir:
@@ -69,7 +72,7 @@ def load_model(language: str) -> Synthesizer:
     use_cuda = torch.cuda.is_available()
     
     try:
-        synthesizer = Synthesizer(model_path, config_path, use_cuda=use_cuda)
+        synthesizer = Synthesizer(tts_checkpoint=model_path, tts_config_path=config_path, use_cuda=use_cuda)
         logger.info(
             f"TTS model loaded successfully for language: {language} "
             f"(device: {'cuda' if use_cuda else 'cpu'})"

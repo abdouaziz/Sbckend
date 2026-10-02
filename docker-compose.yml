@@ -1,0 +1,28 @@
+services:
+  sbckend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sbckend
+    container_name: sbckend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Explicit so the keys always land in the persisted volume
+      API_KEYS_DB: /data/api_keys.db
+    ports:
+      - "127.0.0.1:8000:8000"   # only reachable through Nginx, never directly
+    volumes:
+      - sbckend-data:/data
+      - hf-cache:/root/.cache/huggingface
+      - ./logs:/logs
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ping')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  sbckend-data:
+  hf-cache:

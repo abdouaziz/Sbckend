@@ -1,13 +1,22 @@
 from typing import Optional
 
 from backend.services.log import setup_logging, get_logger
-from backend.services.tts import tts_vocalizer, TTSException
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from backend.services.tts import tts_vocalizer, TTSException, DEFAULT_SPEED_BY_LANGUAGE, DEFAULT_PITCH
+from backend.services.stt import transcribe_bytes, STTException
+from backend.routes import admin, v1
+from backend.routes.auth import require_api_key
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
-DEFAULT_SPEED_BY_LANGUAGE = {"wolof": 1.2, "pulaar": 1.0}
-DEFAULT_PITCH = 0.0
+# Error types the OpenAI SDK maps to its exception classes.
+OPENAI_ERROR_TYPES = {
+    400: "invalid_request_error",
+    401: "authentication_error",
+    404: "not_found_error",
+}
 
 setup_logging()
 
@@ -23,12 +32,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(v1.router)
+app.include_router(admin.router)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def openai_error_handler(request: Request, exc: StarletteHTTPException):
+    # The OpenAI SDK reads errors from {"error": {...}}: keep that shape on the /v1 routes.
+    if not request.url.path.startswith("/v1/"):
+        return await http_exception_handler(request, exc)
+    logger.error(f"{request.url.path}: {exc.detail}")
+    error = {
+        "message": str(exc.detail),
+        "type": OPENAI_ERROR_TYPES.get(exc.status_code, "api_error"),
+        "param": None,
+        "code": None,
+    }
+    return JSONResponse(status_code=exc.status_code, content={"error": error}, headers=exc.headers)
+
+
 @app.get("/ping")
 def ping():
     logger.info(f"Health Check")
     return {"status": "ok"}
 
-@app.post("/synthesize")
+@app.post("/synthesize", dependencies=[Depends(require_api_key)])
 async def synthesize(text: str, language: str = "wolof", speed: Optional[float] = None, pitch: Optional[float] = None):
     try:
         if speed is None:
@@ -38,5 +66,14 @@ async def synthesize(text: str, language: str = "wolof", speed: Optional[float] 
         audio_file_path = tts_vocalizer(text, language, speed=speed, pitch=pitch)
         return FileResponse(audio_file_path, media_type="audio/wav", filename="output.wav")
     except TTSException as e:
+        logger.error(f"{e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/transcribe", dependencies=[Depends(require_api_key)])
+def transcribe(file: UploadFile = File(...), language: Optional[str] = None):
+    try:
+        text = transcribe_bytes(file.file.read(), file.filename, language)
+        return {"text": text, "language": language}
+    except STTException as e:
         logger.error(f"{e}")
         raise HTTPException(status_code=400, detail=str(e))

@@ -7,3 +7,4 @@ TTS
 librosa
 numpy
 huggingface_hub
+transformers

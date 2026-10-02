@@ -1,0 +1,141 @@
+10:52:16 - startup - ERROR - Unsupported language: klingon
+10:52:16 - httpx - INFO - HTTP Request: POST http://testserver/transcribe?language=klingon "HTTP/1.1 400 Bad Request"
+10:52:17 - STT-API - ERROR - Error loading STT model AIHubSN/M-Kiriku-ASR: You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/AIHubSN/M-Kiriku-ASR.
+403 Client Error. (Request ID: Root=1-6abf8ce1-6f0069113da08a835be7be0f;c3a5f884-3d85-4b74-82b5-3228866277a0)
+
+Cannot access gated repo for url https://huggingface.co/AIHubSN/M-Kiriku-ASR/resolve/main/preprocessor_config.json.
+Access to model AIHubSN/M-Kiriku-ASR is restricted and you are not in the authorized list. Visit https://huggingface.co/AIHubSN/M-Kiriku-ASR to ask for access.
+10:52:17 - startup - ERROR - Failed to load STT model: You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/AIHubSN/M-Kiriku-ASR.
+403 Client Error. (Request ID: Root=1-6abf8ce1-6f0069113da08a835be7be0f;c3a5f884-3d85-4b74-82b5-3228866277a0)
+
+Cannot access gated repo for url https://huggingface.co/AIHubSN/M-Kiriku-ASR/resolve/main/preprocessor_config.json.
+Access to model AIHubSN/M-Kiriku-ASR is restricted and you are not in the authorized list. Visit https://huggingface.co/AIHubSN/M-Kiriku-ASR to ask for access.
+10:52:17 - httpx - INFO - HTTP Request: POST http://testserver/transcribe?language=wolof "HTTP/1.1 400 Bad Request"
+11:02:01 - API-KEYS - INFO - API key created: key_976c94dbdf2e470a (test-app)
+11:02:03 - httpx - INFO - HTTP Request: GET http://127.0.0.1:8765/v1/models "HTTP/1.1 200 OK"
+11:02:03 - startup - ERROR - /v1/models: Invalid or revoked API key.
+11:02:03 - httpx - INFO - HTTP Request: GET http://127.0.0.1:8765/v1/models "HTTP/1.1 401 Unauthorized"
+11:02:03 - startup - ERROR - /v1/audio/transcriptions: Model 'whisper-1' not found. Use 'm-kiriku-asr'.
+11:02:03 - httpx - INFO - HTTP Request: POST http://127.0.0.1:8765/v1/audio/transcriptions "HTTP/1.1 404 Not Found"
+11:02:03 - STT-API - ERROR - Error loading STT model AIHubSN/M-Kiriku-ASR: You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/AIHubSN/M-Kiriku-ASR.
+403 Client Error. (Request ID: Root=1-6abf8f2b-03baae025ec55a9216d7df4a;8c537106-4ac3-4d30-8889-704002f6fd90)
+
+Cannot access gated repo for url https://huggingface.co/AIHubSN/M-Kiriku-ASR/resolve/main/preprocessor_config.json.
+Access to model AIHubSN/M-Kiriku-ASR is restricted and you are not in the authorized list. Visit https://huggingface.co/AIHubSN/M-Kiriku-ASR to ask for access.
+11:02:03 - startup - ERROR - /v1/audio/transcriptions: Failed to load STT model: You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/AIHubSN/M-Kiriku-ASR.
+403 Client Error. (Request ID: Root=1-6abf8f2b-03baae025ec55a9216d7df4a;8c537106-4ac3-4d30-8889-704002f6fd90)
+
+Cannot access gated repo for url https://huggingface.co/AIHubSN/M-Kiriku-ASR/resolve/main/preprocessor_config.json.
+Access to model AIHubSN/M-Kiriku-ASR is restricted and you are not in the authorized list. Visit https://huggingface.co/AIHubSN/M-Kiriku-ASR to ask for access.
+11:02:03 - httpx - INFO - HTTP Request: POST http://127.0.0.1:8765/v1/audio/transcriptions "HTTP/1.1 400 Bad Request"
+11:02:03 - TTS-API - INFO - Synthesizing text: salaam aleekum
+11:02:03 - startup - ERROR - /v1/audio/speech: Model not found at /Users/mac/Documents/Hub/Sbckend/backend/checkpoints/wolof/model.pth
+11:02:03 - httpx - INFO - HTTP Request: POST http://127.0.0.1:8765/v1/audio/speech "HTTP/1.1 400 Bad Request"
+11:02:03 - API-KEYS - INFO - API key revoked: key_976c94dbdf2e470a
+11:02:03 - startup - ERROR - /v1/models: Invalid or revoked API key.
+11:02:03 - httpx - INFO - HTTP Request: GET http://127.0.0.1:8765/v1/models "HTTP/1.1 401 Unauthorized"
+11:11:06 - API-KEYS - INFO - API key created: key_33f0cc8552f44277 (t)
+11:11:06 - httpx - INFO - HTTP Request: POST http://testserver/synthesize?text=salaam&language=wolof "HTTP/1.1 401 Unauthorized"
+11:11:06 - httpx - INFO - HTTP Request: POST http://testserver/transcribe?language=klingon "HTTP/1.1 401 Unauthorized"
+11:11:06 - httpx - INFO - HTTP Request: POST http://testserver/synthesize?text=salaam&language=wolof "HTTP/1.1 401 Unauthorized"
+11:11:06 - httpx - INFO - HTTP Request: POST http://testserver/transcribe?language=klingon "HTTP/1.1 401 Unauthorized"
+11:11:06 - TTS-API - INFO - Synthesizing text: salaam
+11:11:06 - startup - ERROR - Model not found at /Users/mac/Documents/Hub/Sbckend/backend/checkpoints/wolof/model.pth
+11:11:06 - httpx - INFO - HTTP Request: POST http://testserver/synthesize?text=salaam&language=wolof "HTTP/1.1 400 Bad Request"
+11:11:06 - startup - ERROR - Unsupported language: klingon
+11:11:06 - httpx - INFO - HTTP Request: POST http://testserver/transcribe?language=klingon "HTTP/1.1 400 Bad Request"
+11:11:06 - startup - INFO - Health Check
+11:11:06 - httpx - INFO - HTTP Request: GET http://testserver/ping "HTTP/1.1 200 OK"
+15:10:17 - API-KEYS - INFO - API key created: key_7d272a1e7d044c9a (smoke)
+15:10:36 - startup - INFO - Health Check
+15:10:36 - startup - INFO - Health Check
+15:10:36 - API-KEYS - INFO - API key created: key_224771bf384c4252 (smoke)
+15:10:38 - startup - INFO - Health Check
+15:10:39 - TTS-API - INFO - Synthesizing text: salaam aleekum, naka nga def?
+15:10:39 - TTS-API - ERROR - Error loading model for wolof: Synthesizer.__init__() takes 1 positional argument but 3 positional arguments (and 1 keyword-only argument) were given
+15:10:39 - startup - ERROR - Failed to load model: Synthesizer.__init__() takes 1 positional argument but 3 positional arguments (and 1 keyword-only argument) were given
+15:10:39 - TTS-API - INFO - Synthesizing text: salaam aleekum, naka nga def?
+15:10:39 - TTS-API - ERROR - Error loading model for wolof: Synthesizer.__init__() takes 1 positional argument but 3 positional arguments (and 1 keyword-only argument) were given
+15:10:39 - startup - ERROR - /v1/audio/speech: Failed to load model: Synthesizer.__init__() takes 1 positional argument but 3 positional arguments (and 1 keyword-only argument) were given
+15:11:50 - startup - INFO - Health Check
+15:12:12 - API-KEYS - INFO - API key created: key_b82620a55f4e4df1 (smoke)
+15:12:15 - startup - INFO - Health Check
+15:12:16 - TTS-API - INFO - Synthesizing text: salaam aleekum, naka nga def?
+15:12:16 - TTS.tts.models - INFO - Using model: vits
+15:12:16 - TTS.utils.audio.processor - INFO - Setting up Audio Processor...
+15:12:16 - TTS.utils.audio.processor - INFO -  | sample_rate: 22050
+15:12:16 - TTS.utils.audio.processor - INFO -  | resample: False
+15:12:16 - TTS.utils.audio.processor - INFO -  | num_mels: 80
+15:12:16 - TTS.utils.audio.processor - INFO -  | log_func: np.log10
+15:12:16 - TTS.utils.audio.processor - INFO -  | min_level_db: 0
+15:12:16 - TTS.utils.audio.processor - INFO -  | frame_shift_ms: None
+15:12:16 - TTS.utils.audio.processor - INFO -  | frame_length_ms: None
+15:12:16 - TTS.utils.audio.processor - INFO -  | ref_level_db: None
+15:12:16 - TTS.utils.audio.processor - INFO -  | fft_size: 1024
+15:12:16 - TTS.utils.audio.processor - INFO -  | power: None
+15:12:16 - TTS.utils.audio.processor - INFO -  | preemphasis: 0.0
+15:12:16 - TTS.utils.audio.processor - INFO -  | griffin_lim_iters: None
+15:12:16 - TTS.utils.audio.processor - INFO -  | signal_norm: None
+15:12:16 - TTS.utils.audio.processor - INFO -  | symmetric_norm: None
+15:12:16 - TTS.utils.audio.processor - INFO -  | mel_fmin: 0
+15:12:16 - TTS.utils.audio.processor - INFO -  | mel_fmax: None
+15:12:16 - TTS.utils.audio.processor - INFO -  | pitch_fmin: None
+15:12:16 - TTS.utils.audio.processor - INFO -  | pitch_fmax: None
+15:12:16 - TTS.utils.audio.processor - INFO -  | spec_gain: 20.0
+15:12:16 - TTS.utils.audio.processor - INFO -  | stft_pad_mode: reflect
+15:12:16 - TTS.utils.audio.processor - INFO -  | max_norm: 1.0
+15:12:16 - TTS.utils.audio.processor - INFO -  | clip_norm: True
+15:12:16 - TTS.utils.audio.processor - INFO -  | do_trim_silence: False
+15:12:16 - TTS.utils.audio.processor - INFO -  | trim_db: 60
+15:12:16 - TTS.utils.audio.processor - INFO -  | do_sound_norm: False
+15:12:16 - TTS.utils.audio.processor - INFO -  | do_amp_to_db_linear: True
+15:12:16 - TTS.utils.audio.processor - INFO -  | do_amp_to_db_mel: True
+15:12:16 - TTS.utils.audio.processor - INFO -  | do_rms_norm: False
+15:12:16 - TTS.utils.audio.processor - INFO -  | db_level: None
+15:12:16 - TTS.utils.audio.processor - INFO -  | stats_path: None
+15:12:16 - TTS.utils.audio.processor - INFO -  | base: 10
+15:12:16 - TTS.utils.audio.processor - INFO -  | hop_length: 256
+15:12:16 - TTS.utils.audio.processor - INFO -  | win_length: 1024
+15:12:18 - TTS-API - INFO - TTS model loaded successfully for language: wolof (device: cpu)
+15:12:18 - TTS.utils.synthesizer - INFO - Text split into sentences.
+15:12:18 - TTS.utils.synthesizer - INFO - Input: ['salaam aleekum, naka nga def?']
+15:12:20 - TTS.utils.synthesizer - INFO - Processing time: 1.773
+15:12:20 - TTS.utils.synthesizer - INFO - Real-time factor: 0.608
+15:12:20 - TTS-API - INFO - Audio saved to: /var/folders/5q/dcfbwrl13_7cldqgcn6zdjn80000gn/T/tmpfgjdw57q.wav
+15:12:20 - TTS-API - INFO - Synthesizing text: salaam aleekum, naka nga def?
+15:12:20 - TTS.utils.synthesizer - INFO - Text split into sentences.
+15:12:20 - TTS.utils.synthesizer - INFO - Input: ['salaam aleekum, naka nga def?']
+15:12:21 - TTS.utils.synthesizer - INFO - Processing time: 0.720
+15:12:21 - TTS.utils.synthesizer - INFO - Real-time factor: 0.245
+15:12:21 - TTS-API - INFO - Audio saved to: /var/folders/5q/dcfbwrl13_7cldqgcn6zdjn80000gn/T/tmpjtpx8481.wav
+15:12:22 - STT-API - ERROR - Error loading STT model AIHubSN/M-Kiriku-ASR: You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/AIHubSN/M-Kiriku-ASR.
+403 Client Error. (Request ID: Root=1-6abfc9d6-20041e6e73a08c231b9d87ab;e5de14be-cef9-4890-ace4-4019271cef8a)
+
+Cannot access gated repo for url https://huggingface.co/AIHubSN/M-Kiriku-ASR/resolve/main/preprocessor_config.json.
+Access to model AIHubSN/M-Kiriku-ASR is restricted and you are not in the authorized list. Visit https://huggingface.co/AIHubSN/M-Kiriku-ASR to ask for access.
+15:12:22 - startup - ERROR - Failed to load STT model: You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/AIHubSN/M-Kiriku-ASR.
+403 Client Error. (Request ID: Root=1-6abfc9d6-20041e6e73a08c231b9d87ab;e5de14be-cef9-4890-ace4-4019271cef8a)
+
+Cannot access gated repo for url https://huggingface.co/AIHubSN/M-Kiriku-ASR/resolve/main/preprocessor_config.json.
+Access to model AIHubSN/M-Kiriku-ASR is restricted and you are not in the authorized list. Visit https://huggingface.co/AIHubSN/M-Kiriku-ASR to ask for access.
+15:12:22 - STT-API - ERROR - Error loading STT model AIHubSN/M-Kiriku-ASR: You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/AIHubSN/M-Kiriku-ASR.
+403 Client Error. (Request ID: Root=1-6abfc9d6-127bb5b03f647b234bf135f8;f39e1b16-8c1b-4f7e-a249-78722c7c0ebb)
+
+Cannot access gated repo for url https://huggingface.co/AIHubSN/M-Kiriku-ASR/resolve/main/preprocessor_config.json.
+Access to model AIHubSN/M-Kiriku-ASR is restricted and you are not in the authorized list. Visit https://huggingface.co/AIHubSN/M-Kiriku-ASR to ask for access.
+15:12:22 - startup - ERROR - /v1/audio/transcriptions: Failed to load STT model: You are trying to access a gated repo.
+Make sure to have access to it at https://huggingface.co/AIHubSN/M-Kiriku-ASR.
+403 Client Error. (Request ID: Root=1-6abfc9d6-127bb5b03f647b234bf135f8;f39e1b16-8c1b-4f7e-a249-78722c7c0ebb)
+
+Cannot access gated repo for url https://huggingface.co/AIHubSN/M-Kiriku-ASR/resolve/main/preprocessor_config.json.
+Access to model AIHubSN/M-Kiriku-ASR is restricted and you are not in the authorized list. Visit https://huggingface.co/AIHubSN/M-Kiriku-ASR to ask for access.
+15:14:25 - startup - INFO - Health Check
+15:14:25 - startup - INFO - Health Check
+15:17:03 - API-KEYS - INFO - API key created: key_97c64e40676f42b4 (faziz)
