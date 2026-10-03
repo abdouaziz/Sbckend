@@ -1,8 +1,9 @@
 from typing import Optional
 
 from backend.services.log import setup_logging, get_logger
-from backend.services.tts import tts_vocalizer, TTSException, DEFAULT_SPEED_BY_LANGUAGE, DEFAULT_PITCH
+from backend.services.tts import tts_vocalizer, TTSException, DEFAULT_SPEED_BY_LANGUAGE, DEFAULT_PITCH, MAX_TTS_CHARS
 from backend.services.stt import transcribe_bytes, STTException
+from backend.api_docs import build_description
 from backend.middleware.limits import LimitsMiddleware
 from backend.routes import admin, v1
 from backend.routes.auth import require_api_key
@@ -26,16 +27,7 @@ logger = get_logger("startup")
 app = FastAPI(
     title="Kiriku API",
     version="1.0.0",
-    description=(
-        "Speech-to-text and text-to-speech for Wolof and Pulaar, compatible with the OpenAI SDK.\n\n"
-        "Authenticate with your team key: `Authorization: Bearer sk-kiriku-...` "
-        "(click **Authorize** above).\n\n"
-        "```python\n"
-        "from openai import OpenAI\n"
-        "client = OpenAI(api_key=\"sk-kiriku-...\", base_url=\"<this server>/v1\")\n"
-        "client.audio.speech.create(model=\"kiriku-tts\", voice=\"wolof\", input=\"Salaam aleekum\").write_to_file(\"out.wav\")\n"
-        "```"
-    ),
+    description=build_description(MAX_TTS_CHARS),
 )
 
 # Added first so that CORS stays outermost and also covers the 429/413/503 responses.

@@ -34,13 +34,24 @@ def _env_int(name: str, default: int) -> int:
     return int(os.environ.get(name, default))
 
 
+def limit_settings() -> dict[str, int]:
+    """Effective limits, shared by the middleware and the public API docs."""
+    return {
+        "rate_per_minute": _env_int("RATE_LIMIT_PER_MINUTE", 30),
+        "max_concurrent_per_key": _env_int("MAX_CONCURRENT_PER_KEY", 15),
+        "max_inflight": _env_int("MAX_INFLIGHT", 32),
+        "max_upload_mb": _env_int("MAX_UPLOAD_MB", 25),
+    }
+
+
 class LimitsMiddleware:
     def __init__(self, app, rate_per_minute=None, max_concurrent_per_key=None, max_inflight=None, max_upload_mb=None):
         self.app = app
-        self.rate_per_minute = rate_per_minute or _env_int("RATE_LIMIT_PER_MINUTE", 30)
-        self.max_concurrent_per_key = max_concurrent_per_key or _env_int("MAX_CONCURRENT_PER_KEY", 15)
-        self.max_inflight = max_inflight or _env_int("MAX_INFLIGHT", 32)
-        self.max_body = (max_upload_mb or _env_int("MAX_UPLOAD_MB", 25)) * 1024 * 1024
+        settings = limit_settings()
+        self.rate_per_minute = rate_per_minute or settings["rate_per_minute"]
+        self.max_concurrent_per_key = max_concurrent_per_key or settings["max_concurrent_per_key"]
+        self.max_inflight = max_inflight or settings["max_inflight"]
+        self.max_body = (max_upload_mb or settings["max_upload_mb"]) * 1024 * 1024
         self._hits: dict[str, deque] = {}
         self._in_flight: dict[str, int] = {}
         self._total_in_flight = 0
