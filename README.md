@@ -50,6 +50,11 @@ All settings are environment variables:
 | `STT_MODEL_ID` | `AIHubSN/M-Kiriku-ASR` | Speech-to-text model to load |
 | `ADMIN_API_KEY` | none | Secret for the `/admin` routes; they are disabled (`503`) when unset |
 | `API_KEYS_DB` | `data/api_keys.db` | SQLite database holding the API keys |
+| `RATE_LIMIT_PER_MINUTE` | `30` | Requests per API key over a sliding 60 s window (`429` beyond) |
+| `MAX_CONCURRENT_PER_KEY` | `15` | Requests of one key in flight at once (`429` beyond) |
+| `MAX_INFLIGHT` | `32` | Requests in flight across all keys (`503` beyond) |
+| `MAX_UPLOAD_MB` | `25` | Maximum request body, checked on the bytes actually received (`413` beyond) |
+| `MAX_TTS_CHARS` | `512` | Maximum text length per speech request (`400` beyond) |
 
 ## Running locally
 
@@ -399,7 +404,8 @@ docker cp sbckend:/data/api_keys.backup.db ./api_keys-$(date +%F).db
 
 - **One worker, one instance.** Keep uvicorn at a single worker (the default command): each worker would load its own copy of the models. Keys are stored in a local SQLite file, so several instances cannot share them without moving to a shared database.
 - **Requests are processed one at a time per model.** Inference is serialized by locks; concurrent requests wait in turn. For more throughput, use a faster GPU or move the STT model to [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (see the model card).
-- **No rate limiting or usage quotas** per key yet: only valid, non-revoked keys are checked.
+- **Rate limits** are enforced per key by `backend/middleware/limits.py`, above routing, so an over-limit client is refused before its upload is read. Counters live in memory: they reset on restart and assume a single process. Errors use the OpenAI format; the SDK retries `429` responses after `Retry-After` on its own.
+- **No daily usage quotas** per key yet.
 
 ### 12. Troubleshooting
 
@@ -413,6 +419,14 @@ docker cp sbckend:/data/api_keys.backup.db ./api_keys-$(date +%F).db
 | `413 Request Entity Too Large` | Raise `client_max_body_size` in Nginx |
 | `504 Gateway Timeout` on the first transcription | The model was still downloading or loading: run step 6, raise `proxy_read_timeout` |
 | Transcription is very slow | The GPU is not used: check `docker-compose.gpu.yml` is included (or `--gpus all`), then `docker exec sbckend python -c "import torch; print(torch.cuda.is_available())"` |
+
+## Tests
+
+```bash
+uv run --no-project --with fastapi --with python-multipart --with httpx --with pytest --with anyio pytest tests
+```
+
+Unit tests run without models or GPU; `scripts/smoke_test.py` tests a running server.
 
 ## Project structure
 

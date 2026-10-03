@@ -16,6 +16,8 @@ SUPPORTED_LANGUAGES = ["wolof","pulaar"]
 
 DEFAULT_SPEED_BY_LANGUAGE = {"wolof": 1.2, "pulaar": 1.0}
 DEFAULT_PITCH = 0.0
+# One request synthesizes at most this many characters (longer texts: split client-side).
+MAX_TTS_CHARS = int(os.environ.get("MAX_TTS_CHARS", 512))
 
 def _checkpoints_dir() -> str:
     env_dir = os.environ.get("CHECKPOINTS_DIR")
@@ -118,6 +120,9 @@ def tts_vocalizer(text: str, language: str = "wolof" , speed:float=1.0 , pitch:f
 
     if not text:
         raise TTSException("Empty text provided")
+
+    if len(text) > MAX_TTS_CHARS:
+        raise TTSException(f"Text too long: {len(text)} characters, the maximum is {MAX_TTS_CHARS}")
 
     translation = convert_numbers_to_french(text.lower())
     logger.info(f"Synthesizing text: {translation}")

@@ -3,6 +3,7 @@ from typing import Optional
 from backend.services.log import setup_logging, get_logger
 from backend.services.tts import tts_vocalizer, TTSException, DEFAULT_SPEED_BY_LANGUAGE, DEFAULT_PITCH
 from backend.services.stt import transcribe_bytes, STTException
+from backend.middleware.limits import LimitsMiddleware
 from backend.routes import admin, v1
 from backend.routes.auth import require_api_key
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
@@ -36,6 +37,9 @@ app = FastAPI(
         "```"
     ),
 )
+
+# Added first so that CORS stays outermost and also covers the 429/413/503 responses.
+app.add_middleware(LimitsMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
