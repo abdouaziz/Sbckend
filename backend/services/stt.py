@@ -23,6 +23,8 @@ SAMPLE_RATE = 16000
 CHUNK_SECONDS = 30
 OVERLAP_SECONDS = 5
 MIN_CHUNK_SECONDS = 0.5
+# Longest audio accepted per request; split longer recordings client-side.
+MAX_AUDIO_SECONDS = float(os.environ.get("MAX_AUDIO_SECONDS", 60))
 MAX_NEW_TOKENS = 440
 
 _processor: Optional[WhisperProcessor] = None
@@ -89,6 +91,8 @@ def transcribe_with_duration(audio_path: str, language: Optional[str] = None) ->
     duration = len(audio) / SAMPLE_RATE
     if duration < MIN_CHUNK_SECONDS:
         raise STTException("Audio too short")
+    if duration > MAX_AUDIO_SECONDS:
+        raise STTException(f"Audio too long: {duration:.1f} s, the maximum is {MAX_AUDIO_SECONDS:g} s")
 
     processor, model = load_model()
     decoder_ids = _decoder_input_ids(processor, language) if language else None

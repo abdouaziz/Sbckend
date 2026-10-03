@@ -2,7 +2,7 @@ from typing import Optional
 
 from backend.services.log import setup_logging, get_logger
 from backend.services.tts import tts_vocalizer, TTSException, DEFAULT_SPEED_BY_LANGUAGE, DEFAULT_PITCH, MAX_TTS_CHARS
-from backend.services.stt import transcribe_bytes, STTException
+from backend.services.stt import transcribe_bytes, STTException, MAX_AUDIO_SECONDS
 from backend.api_docs import build_description
 from backend.middleware.limits import LimitsMiddleware
 from backend.middleware.usage import UsageMiddleware
@@ -28,7 +28,7 @@ logger = get_logger("startup")
 app = FastAPI(
     title="Kiriku API",
     version="1.0.0",
-    description=build_description(MAX_TTS_CHARS),
+    description=build_description(MAX_TTS_CHARS, MAX_AUDIO_SECONDS),
 )
 
 # Order, from outermost: CORS, usage journal, limits. The journal sits outside the

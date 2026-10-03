@@ -54,7 +54,7 @@ def _commit() -> str:
         return "unknown"
 
 
-def build_description(max_tts_chars: int) -> str:
+def build_description(max_tts_chars: int, max_audio_seconds: float) -> str:
     limits = limit_settings()
     base_url = public_base_url()
     return f"""
@@ -95,7 +95,7 @@ curl {base_url}/v1/audio/speech -H "Authorization: Bearer sk-kiriku-..." \\
 | Route | `model` | Languages | Notes |
 |---|---|---|---|
 | `POST /v1/audio/speech` | `kiriku-tts` | `voice`: `wolof`, `pulaar` | WAV only; `speed` from 0 to 2; `pitch` from -1 to 1 (SDK: `extra_body={{"pitch": 0.2}}`) |
-| `POST /v1/audio/transcriptions` | `m-kiriku-asr` | `language`: `wolof`/`wo`, `pulaar`/`ff`, `serer`/`srr`, or omit it | Any length; wav, mp3, ogg…; `response_format`: `json` or `text` |
+| `POST /v1/audio/transcriptions` | `m-kiriku-asr` | `language`: `wolof`/`wo`, `pulaar`/`ff`, `serer`/`srr`, or omit it | Up to {max_audio_seconds:g} s; wav, mp3, ogg…; `response_format`: `json` or `text` |
 | `GET /v1/models` | | | Lists both models |
 
 See **Good to know about the models** below before integrating: numbers, alphabet, text length.
@@ -108,6 +108,7 @@ See **Good to know about the models** below before integrating: numbers, alphabe
 | Concurrent requests per key | {limits["max_concurrent_per_key"]} | `429` |
 | Server capacity (all teams) | {limits["max_inflight"]} requests in progress | `503`, with a `Retry-After` header |
 | Audio upload | {limits["max_upload_mb"]} MB | `413` |
+| Audio duration per transcription | {max_audio_seconds:g} s | `400`: split longer recordings |
 | Text per speech request | {max_tts_chars} characters | `400`: split longer texts into sentences |
 
 The OpenAI SDK retries `429` and `503` responses on its own (2 retries by default,
@@ -150,7 +151,8 @@ Errors follow the OpenAI format, so the SDK raises its usual exceptions:
 
 - Whisper large-v3 fine-tuned by AI Hub Senegal on Wolof, Pulaar and Serer.
 - Pass `language` when you know it: it avoids a wrong language guess.
-- Audio is converted to 16 kHz mono; long audio is processed in 30 s windows.
+- Audio is converted to 16 kHz mono; at most {max_audio_seconds:g} s per request, processed in
+  30 s windows. Split longer recordings, ideally on silences.
 - Transcriptions may contain digits and French words (code-switching), as
   speakers use them. A stray `<|wo|>` tag can appear at the start of some
   transcriptions: strip it (fix in progress).

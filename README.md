@@ -9,7 +9,7 @@ A FastAPI backend for speech technology in Senegalese languages:
 ## Features
 
 - `/synthesize`: generate a WAV audio file from text, with adjustable **speed** and **pitch**
-- `/transcribe`: transcribe an uploaded audio file of any length to text
+- `/transcribe`: transcribe an uploaded audio file (up to 60 s) to text
 - All routes except `/ping` and `/admin` require an `sk-kiriku-...` API key
 - `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/models`: the same features behind the OpenAI API format, authenticated with `sk-kiriku-...` keys
 - `/admin/keys`: create, list and revoke API keys
@@ -55,6 +55,7 @@ All settings are environment variables:
 | `MAX_INFLIGHT` | `32` | Requests in flight across all keys (`503` beyond) |
 | `MAX_UPLOAD_MB` | `25` | Maximum request body, checked on the bytes actually received (`413` beyond) |
 | `MAX_TTS_CHARS` | `512` | Maximum text length per speech request (`400` beyond) |
+| `MAX_AUDIO_SECONDS` | `60` | Maximum audio duration per transcription (`400` beyond) |
 | `PUBLIC_BASE_URL` | RunPod proxy URL of the pod | URL shown in the Swagger examples |
 | `LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` | none | Optional: export usage traces (metadata only) to Langfuse |
 
@@ -102,7 +103,7 @@ Requires an API key (see [API keys](#api-keys)). Multipart form upload, plus a q
 
 | Parameter | Type | Default  | Description |
 |-----------|------|----------|-------------|
-| `file`    | file | required | Audio file (wav, mp3, ogg, …); any length, processed in 30 s windows with 5 s overlap |
+| `file`    | file | required | Audio file (wav, mp3, ogg, …); up to `MAX_AUDIO_SECONDS` (60 s), processed in 30 s windows with 5 s overlap |
 | `language`| str  | auto     | `wolof`, `pulaar` or `serer`; omit to let the model detect it |
 
 ```bash
@@ -434,6 +435,28 @@ uv run --no-project --with fastapi --with python-multipart --with httpx --with p
 ```
 
 Unit tests run without models or GPU; `scripts/smoke_test.py` tests a running server.
+
+## Roadmap
+
+Known issues and planned improvements, most useful first.
+
+- [ ] **Numbers in text-to-speech.** Only 0 to 10 are converted to words; the TTS alphabet has no digits, so any
+  other number is silently skipped ("le 15 mars 2026" loses its numbers). Convert every number with
+  `num2words(lang="fr")`, ordinals and years included.
+- [ ] **`<|wo|>` in transcriptions.** The language tag the decoder starts with sometimes ends up at the start of the
+  text (2 Wolof clips out of 8 in our benchmark), because `skip_special_tokens` does not cover the language tokens
+  added to the tokenizer. Strip `<|wo|>`, `<|pu|>` and `<|se|>` from the output.
+- [ ] **Load the models at startup.** Today each model loads on the first request that needs it: the first
+  transcription after a restart takes ~30 s. Load both in a background thread at startup, and make `/ping`
+  answer `loading` until they are ready, so that the health check and clients know when the API is usable.
+- [ ] **Faster speech-to-text.** Move to faster-whisper (CTranslate2) with batched inference, as the model card
+  suggests; measure on the target GPU before adopting it.
+- [ ] **Smaller audio responses.** Speech is returned as WAV only; add `mp3`/`opus` (`response_format`) to cut
+  download time, which dominates on long sentences.
+- [ ] **Daily quotas per key** (audio minutes, characters), on top of the rate limits.
+- [ ] **Shared key store** if the API ever runs on several replicas: keys, usage and rate limits are local to one
+  process today.
+- [ ] **Tests** of the routes with stubbed models, beyond the middleware and usage tests.
 
 ## Project structure
 
