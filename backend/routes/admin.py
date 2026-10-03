@@ -4,7 +4,8 @@ from pydantic import BaseModel
 from backend.routes.auth import require_admin
 from backend.services.api_keys import create_key, list_keys, revoke_key
 
-router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)])
+# Hidden from the public Swagger: reachable only with ADMIN_API_KEY.
+router = APIRouter(prefix="/admin", dependencies=[Depends(require_admin)], include_in_schema=False)
 
 
 class CreateKeyRequest(BaseModel):

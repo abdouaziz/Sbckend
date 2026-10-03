@@ -22,7 +22,20 @@ setup_logging()
 
 logger = get_logger("startup")
 
-app = FastAPI()
+app = FastAPI(
+    title="Kiriku API",
+    version="1.0.0",
+    description=(
+        "Speech-to-text and text-to-speech for Wolof and Pulaar, compatible with the OpenAI SDK.\n\n"
+        "Authenticate with your team key: `Authorization: Bearer sk-kiriku-...` "
+        "(click **Authorize** above).\n\n"
+        "```python\n"
+        "from openai import OpenAI\n"
+        "client = OpenAI(api_key=\"sk-kiriku-...\", base_url=\"<this server>/v1\")\n"
+        "client.audio.speech.create(model=\"kiriku-tts\", voice=\"wolof\", input=\"Salaam aleekum\").write_to_file(\"out.wav\")\n"
+        "```"
+    ),
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,12 +64,12 @@ async def openai_error_handler(request: Request, exc: StarletteHTTPException):
     return JSONResponse(status_code=exc.status_code, content={"error": error}, headers=exc.headers)
 
 
-@app.get("/ping")
+@app.get("/ping", include_in_schema=False)
 def ping():
     logger.info(f"Health Check")
     return {"status": "ok"}
 
-@app.post("/synthesize", dependencies=[Depends(require_api_key)])
+@app.post("/synthesize", dependencies=[Depends(require_api_key)], include_in_schema=False)
 async def synthesize(text: str, language: str = "wolof", speed: Optional[float] = None, pitch: Optional[float] = None):
     try:
         if speed is None:
@@ -69,7 +82,7 @@ async def synthesize(text: str, language: str = "wolof", speed: Optional[float] 
         logger.error(f"{e}")
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/transcribe", dependencies=[Depends(require_api_key)])
+@app.post("/transcribe", dependencies=[Depends(require_api_key)], include_in_schema=False)
 def transcribe(file: UploadFile = File(...), language: Optional[str] = None):
     try:
         text = transcribe_bytes(file.file.read(), file.filename, language)
