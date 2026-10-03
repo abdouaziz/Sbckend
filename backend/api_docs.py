@@ -4,8 +4,14 @@ Limits are read from the same settings as the middleware and the TTS service,
 so the documentation always matches what the server enforces.
 """
 import os
+import subprocess
+from pathlib import Path
 
 from backend.middleware.limits import limit_settings
+
+REPOSITORY_URL = "https://github.com/abdouaziz/Sbckend"
+ASR_MODEL_URL = "https://huggingface.co/AIHubSN/M-Kiriku-ASR"
+TTS_MODEL_URL = "https://huggingface.co/mlroot/ww2"
 
 
 def public_base_url() -> str:
@@ -15,6 +21,37 @@ def public_base_url() -> str:
     if os.environ.get("RUNPOD_POD_ID"):
         return f"https://{os.environ['RUNPOD_POD_ID']}-{os.environ.get('PORT', '8000')}.proxy.runpod.net"
     return "<this server>"
+
+
+def _gpu() -> str:
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            props = torch.cuda.get_device_properties(0)
+            return f"{props.name}, {props.total_memory / 1024**3:.0f} GB"
+    except Exception:
+        pass
+    return "none detected (CPU)"
+
+
+def _hosting() -> str:
+    """HOSTING if set (e.g. "Azure Container Apps, France Central"), else detected."""
+    if os.environ.get("HOSTING"):
+        return os.environ["HOSTING"]
+    if os.environ.get("RUNPOD_POD_ID"):
+        region = os.environ.get("RUNPOD_DC_ID")
+        return "RunPod GPU pod" + (f", data center {region}" if region else "")
+    return "not specified"
+
+
+def _commit() -> str:
+    try:
+        root = Path(__file__).resolve().parent.parent
+        return subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture_output=True,
+                              text=True, timeout=5).stdout.strip() or "unknown"
+    except Exception:
+        return "unknown"
 
 
 def build_description(max_tts_chars: int) -> str:
@@ -61,7 +98,7 @@ curl {base_url}/v1/audio/speech -H "Authorization: Bearer sk-kiriku-..." \\
 | `POST /v1/audio/transcriptions` | `m-kiriku-asr` | `language`: `wolof`/`wo`, `pulaar`/`ff`, `serer`/`srr`, or omit it | Any length; wav, mp3, ogg…; `response_format`: `json` or `text` |
 | `GET /v1/models` | | | Lists both models |
 
-Text-to-speech reads digits as French numbers ("3" → "trois").
+See **Good to know about the models** below before integrating: numbers, alphabet, text length.
 
 ## Limits
 
@@ -93,10 +130,49 @@ Errors follow the OpenAI format, so the SDK raises its usual exceptions:
 | `429` | Rate or concurrency limit reached for your key |
 | `503` | Server at capacity: retry shortly |
 
-## Good to know
+## Good to know about the models
+
+**Text-to-speech** (`kiriku-tts`)
+
+- One voice per language. Output: WAV, 22.05 kHz.
+- The models read characters, not phonemes, from a lowercase alphabet. Text is
+  lowercased for you; **any other character outside the alphabet is silently
+  skipped**, not spelled out. Pulaar needs its own letters (`ɓ ɗ ƴ ŋ`): writing
+  `b` for `ɓ` changes the pronunciation.
+- **Numbers**: only 0 to 10 are converted to words today (in French: "3" →
+  "trois"). Write larger numbers in words, otherwise they are skipped.
+- {max_tts_chars} characters per request, about 45 s of audio. For longer texts,
+  split by sentence and chain the requests.
+- `speed`: the default for Wolof is 1.2, chosen because it sounds more natural;
+  1.0 for Pulaar. `pitch` shifts the voice by up to 4 semitones each way.
+
+**Speech-to-text** (`m-kiriku-asr`)
+
+- Whisper large-v3 fine-tuned by AI Hub Senegal on Wolof, Pulaar and Serer.
+- Pass `language` when you know it: it avoids a wrong language guess.
+- Audio is converted to 16 kHz mono; long audio is processed in 30 s windows.
+- Transcriptions may contain digits and French words (code-switching), as
+  speakers use them. A stray `<|wo|>` tag can appear at the start of some
+  transcriptions: strip it (fix in progress).
+
+## Good to know about the API
 
 - Send a `User-Agent` header: requests without one are blocked by the hosting proxy
   (the OpenAI SDK, `curl` and `requests` send one; plain Python `urllib` does not).
 - The first transcription after a server restart can take up to ~30 s while the
   model loads; the next ones take about 1 s for 10 s of audio.
+
+## About this API
+
+| | |
+|---|---|
+| Source code | [{REPOSITORY_URL}]({REPOSITORY_URL}) (version `{_commit()}`) |
+| Speech-to-text model | [AIHubSN/M-Kiriku-ASR]({ASR_MODEL_URL}): Whisper large-v3 architecture, fp16 |
+| Text-to-speech models | [mlroot/ww2]({TTS_MODEL_URL}): Coqui VITS, one checkpoint per language |
+| Hosting | {_hosting()} |
+| GPU | {_gpu()} |
+
+Measured on an RTX 4090 (3 Oct 2026), model time only: about 0.5–1.1 s to
+transcribe a 7–15 s clip, 4.5 s for one minute of audio, 0.1 s to synthesize
+a sentence. Add the network time from where you call the API.
 """
