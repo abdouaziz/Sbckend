@@ -72,10 +72,12 @@ Interactive API docs are served at `http://localhost:8000/docs`. For a productio
 
 ### `GET /ping`
 
-Health check.
+Health check. All models are loaded once at startup, in the background: `/ping` answers `503` with
+`"status": "loading"` until they are ready, then `200` with `"ok"`, or `"degraded"` if a model failed to load
+(its routes then answer errors; `failed` names it). `PRELOAD_MODELS=0` skips the preload.
 
 ```json
-{ "status": "ok" }
+{ "status": "ok", "ready": ["tts:wolof", "tts:pulaar", "stt"], "failed": {}, "seconds": 42.0 }
 ```
 
 ### `POST /synthesize`
@@ -443,12 +445,12 @@ Known issues and planned improvements, most useful first.
 - [ ] **Numbers in text-to-speech.** Only 0 to 10 are converted to words; the TTS alphabet has no digits, so any
   other number is silently skipped ("le 15 mars 2026" loses its numbers). Convert every number with
   `num2words(lang="fr")`, ordinals and years included.
-- [ ] **`<|wo|>` in transcriptions.** The language tag the decoder starts with sometimes ends up at the start of the
+- [x] **`<|wo|>` in transcriptions.** The language tag the decoder starts with sometimes ends up at the start of the
   text (2 Wolof clips out of 8 in our benchmark), because `skip_special_tokens` does not cover the language tokens
-  added to the tokenizer. Strip `<|wo|>`, `<|pu|>` and `<|se|>` from the output.
-- [ ] **Load the models at startup.** Today each model loads on the first request that needs it: the first
-  transcription after a restart takes ~30 s. Load both in a background thread at startup, and make `/ping`
-  answer `loading` until they are ready, so that the health check and clients know when the API is usable.
+  added to the tokenizer. Stripped from the output since this fix.
+- [x] **Load the models at startup.** Today each model loads on the first request that needs it: the first
+  transcription after a restart took ~30 s. Now loaded in a background thread at startup, with a warm-up
+  inference each; `/ping` answers `loading` until they are ready.
 - [ ] **Faster speech-to-text.** Move to faster-whisper (CTranslate2) with batched inference, as the model card
   suggests; measure on the target GPU before adopting it.
 - [ ] **Smaller audio responses.** Speech is returned as WAV only; add `mp3`/`opus` (`response_format`) to cut

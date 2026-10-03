@@ -85,11 +85,18 @@ def load_model(language: str) -> Synthesizer:
         raise TTSException(f"Failed to load model: {e}") from e
 
 
+_load_lock = threading.Lock()
+
+
 def get_synthesizer(language: str) -> Synthesizer:
-    if language not in _synthesizers:
-        _synthesizers[language] = load_model(language)
-        _synthesizer_locks[language] = threading.Lock()
-    return _synthesizers[language]
+    # Locked: the startup preload and a request may ask for the same model at once,
+    # and the inference lock must exist before the model is visible to requests.
+    with _load_lock:
+        if language not in _synthesizers:
+            synthesizer = load_model(language)
+            _synthesizer_locks[language] = threading.Lock()
+            _synthesizers[language] = synthesizer
+        return _synthesizers[language]
 
 
 def convert_numbers_to_french(text: str) -> str:

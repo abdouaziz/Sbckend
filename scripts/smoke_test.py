@@ -58,7 +58,8 @@ def main():
 
     def ping():
         r = requests.get(f"{base_url}/ping", timeout=30)
-        assert r.status_code == 200 and r.json() == {"status": "ok"}, f"{r.status_code} {r.text}"
+        # "loading" (503) while the models load at startup; "degraded" if one failed.
+        assert r.status_code == 200 and r.json()["status"] == "ok", f"{r.status_code} {r.text}"
 
     def rejects_missing_key():
         r = requests.post(f"{base_url}/synthesize", params={"text": "test"}, timeout=30)

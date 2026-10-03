@@ -154,15 +154,14 @@ Errors follow the OpenAI format, so the SDK raises its usual exceptions:
 - Audio is converted to 16 kHz mono; at most {max_audio_seconds:g} s per request, processed in
   30 s windows. Split longer recordings, ideally on silences.
 - Transcriptions may contain digits and French words (code-switching), as
-  speakers use them. A stray `<|wo|>` tag can appear at the start of some
-  transcriptions: strip it (fix in progress).
+  speakers use them.
 
 ## Good to know about the API
 
 - Send a `User-Agent` header: requests without one are blocked by the hosting proxy
   (the OpenAI SDK, `curl` and `requests` send one; plain Python `urllib` does not).
-- The first transcription after a server restart can take up to ~30 s while the
-  model loads; the next ones take about 1 s for 10 s of audio.
+- After a server restart, the models take about a minute to load: `GET /ping`
+  answers `503` with `"status": "loading"` until the API is ready.
 
 ## About this API
 

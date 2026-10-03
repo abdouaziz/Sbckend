@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from typing import Optional
 
 from backend.services.log import setup_logging, get_logger
@@ -8,6 +9,7 @@ from backend.middleware.limits import LimitsMiddleware
 from backend.middleware.usage import UsageMiddleware
 from backend.routes import admin, admin_ui, v1
 from backend.routes.auth import require_api_key
+from backend.services import preload
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import FileResponse, JSONResponse
@@ -25,7 +27,15 @@ setup_logging()
 
 logger = get_logger("startup")
 
+@asynccontextmanager
+async def lifespan(_app):
+    # Models load in the background: the server answers /ping ("loading") meanwhile.
+    preload.start()
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Kiriku API",
     version="1.0.0",
     description=build_description(MAX_TTS_CHARS, MAX_AUDIO_SECONDS),
@@ -66,8 +76,10 @@ async def openai_error_handler(request: Request, exc: StarletteHTTPException):
 
 @app.get("/ping", include_in_schema=False)
 def ping():
-    logger.info(f"Health Check")
-    return {"status": "ok"}
+    # 503 while the models load, so health checks and clients wait; "degraded" (200)
+    # when a model failed: the other routes still work.
+    state = preload.status()
+    return JSONResponse(state, status_code=503 if state["status"] == "loading" else 200)
 
 @app.post("/synthesize", dependencies=[Depends(require_api_key)], include_in_schema=False)
 async def synthesize(text: str, language: str = "wolof", speed: Optional[float] = None, pitch: Optional[float] = None):

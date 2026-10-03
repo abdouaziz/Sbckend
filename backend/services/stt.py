@@ -8,6 +8,7 @@ import librosa
 import torch
 from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
+from backend.services.asr_text import clean_transcription
 from backend.services.log import setup_logging, get_logger
 
 setup_logging()
@@ -121,7 +122,7 @@ def transcribe_with_duration(audio_path: str, language: Optional[str] = None) ->
 
             with _inference_lock, torch.no_grad():
                 ids = model.generate(features, **generate_kwargs)
-            texts.append(processor.batch_decode(ids, skip_special_tokens=True)[0].strip())
+            texts.append(clean_transcription(processor.batch_decode(ids, skip_special_tokens=True)[0]))
     except Exception as e:
         logger.error(f"Error during transcription: {e}")
         raise STTException(f"Failed to transcribe audio: {e}") from e
