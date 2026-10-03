@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kiriku Admin</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1b1f24; --muted: #5f6b7a; --border: #e2e6eb;
+    --accent: #0f766e; --accent-text: #ffffff; --danger: #b42318; --warn: #b54708; --ok: #067647;
+    --bar: #14b8a6; --code: #eef1f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216; --card: #171b21; --text: #e6e9ed; --muted: #9aa5b1; --border: #2a313a;
+      --accent: #2dd4bf; --accent-text: #0f1216; --danger: #f97066; --warn: #fdb022; --ok: #47cd89;
+      --bar: #2dd4bf; --code: #222831;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--border); background: var(--card); }
+  header h1 { margin: 0; font-size: 17px; }
+  main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 48px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 12px; font-size: 15px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  input, select, button { font: inherit; border-radius: 7px; border: 1px solid var(--border); padding: 7px 10px; background: var(--card); color: var(--text); }
+  button { cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  button.danger { color: var(--danger); }
+  button:disabled { opacity: .5; cursor: default; }
+  .muted { color: var(--muted); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 10px; }
+  .kpi { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .kpi .label { color: var(--muted); font-size: 12px; }
+  .kpi .value { font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .kpi .sub { color: var(--muted); font-size: 12px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  td.num, th.num { text-align: right; }
+  .badge { font-size: 11px; padding: 2px 7px; border-radius: 99px; border: 1px solid currentColor; }
+  .badge.active { color: var(--ok); } .badge.revoked { color: var(--muted); }
+  code { background: var(--code); padding: 2px 6px; border-radius: 5px; font-size: 13px; }
+  .secret { margin-top: 12px; padding: 12px; border: 1px solid var(--warn); border-radius: 8px; }
+  .secret code { display: block; margin: 8px 0; padding: 8px; word-break: break-all; }
+  .error { color: var(--danger); }
+  svg text { fill: var(--muted); font-size: 10px; }
+  #login { max-width: 420px; margin: 60px auto; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Kiriku API · administration</h1>
+  <div class="row">
+    <span id="updated" class="muted"></span>
+    <button id="logout" class="hidden">Se déconnecter</button>
+  </div>
+</header>
+
+<main>
+  <section id="login" class="card">
+    <h2>Connexion</h2>
+    <p class="muted">Clé admin du serveur (<code>ADMIN_API_KEY</code>). Elle reste dans cet onglet et n'est envoyée qu'à cette API.</p>
+    <form id="login-form" class="row">
+      <input id="admin-key" type="password" autocomplete="off" placeholder="Clé admin" style="flex:1" required>
+      <button class="primary">Entrer</button>
+    </form>
+    <p id="login-error" class="error"></p>
+  </section>
+
+  <div id="app" class="hidden">
+    <section class="card">
+      <div class="row" style="justify-content: space-between">
+        <h2>Indicateurs</h2>
+        <div class="row">
+          <select id="hours">
+            <option value="1">1 h</option>
+            <option value="24" selected>24 h</option>
+            <option value="168">7 jours</option>
+            <option value="720">30 jours</option>
+          </select>
+          <button id="refresh">Actualiser</button>
+        </div>
+      </div>
+      <div id="kpis" class="kpis"></div>
+    </section>
+
+    <section class="card">
+      <h2 id="chart-title">Requêtes par heure</h2>
+      <div id="chart"></div>
+    </section>
+
+    <section class="card">
+      <h2>Par route</h2>
+      <div class="table-wrap"><table id="routes"></table></div>
+    </section>
+
+    <section class="card">
+      <div class="row" style="justify-content: space-between">
+        <h2>Clés API</h2>
+        <form id="create-form" class="row">
+          <input id="key-name" placeholder="Nom de l'équipe" maxlength="80" required>
+          <button class="primary">Créer une clé</button>
+        </form>
+      </div>
+      <div id="new-key" class="secret hidden">
+        <strong>Clé créée pour <span id="new-key-name"></span></strong>
+        <span class="muted">— elle ne sera plus jamais affichée : copiez-la maintenant.</span>
+        <code id="new-key-value"></code>
+        <div class="row"><button id="copy-key">Copier</button><button id="hide-key">J'ai copié la clé</button></div>
+      </div>
+      <div class="table-wrap"><table id="keys"></table></div>
+    </section>
+    <p id="app-error" class="error"></p>
+  </div>
+</main>
+
+<script>
+"use strict";
+const STORAGE = "kiriku-admin-key";
+const $ = (id) => document.getElementById(id);
+let adminKey = null;
+let timer = null;
+
+function storageGet() { try { return sessionStorage.getItem(STORAGE); } catch { return null; } }
+function storageSet(v) { try { v ? sessionStorage.setItem(STORAGE, v) : sessionStorage.removeItem(STORAGE); } catch {} }
+
+async function api(path, options = {}) {
+  const response = await fetch(path, {
+    ...options,
+    headers: { Authorization: `Bearer ${adminKey}`, "Content-Type": "application/json", ...(options.headers || {}) },
+  });
+  if (response.status === 401) { logout("Clé admin refusée."); throw new Error("401"); }
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.detail || body.error?.message || `HTTP ${response.status}`);
+  return body;
+}
+
+function el(tag, text, className) {
+  const node = document.createElement(tag);
+  if (text !== undefined && text !== null) node.textContent = text;
+  if (className) node.className = className;
+  return node;
+}
+
+const nf = new Intl.NumberFormat("fr-FR");
+const fmt = (v, suffix = "") => (v === null || v === undefined ? "—" : nf.format(Math.round(v * 10) / 10) + suffix);
+const fmtMs = (v) => (v === null || v === undefined ? "—" : v >= 1000 ? fmt(v / 1000, " s") : fmt(v, " ms"));
+const fmtMin = (s) => (s ? fmt(s / 60, " min") : "0 min");
+const fmtDate = (iso) => (iso ? new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "—");
+
+function renderKpis(report) {
+  const o = report.overall;
+  const ok = o.requests - o.errors - o.rate_limited;
+  const items = [
+    ["Requêtes", fmt(o.requests), `${fmt(ok)} réussies`],
+    ["Erreurs", fmt(o.errors), o.requests ? fmt((100 * o.errors) / o.requests, " %") : "—"],
+    ["Refus (429/503)", fmt(o.rate_limited), "limites de débit"],
+    ["Latence p50 / p95", `${fmtMs(o.latency_ms_p50)}`, `p95 ${fmtMs(o.latency_ms_p95)}`],
+    ["Inférence p50", fmtMs(o.inference_ms_p50), "temps du modèle seul"],
+    ["Audio transcrit", fmtMin(o.audio_seconds_in), "ASR"],
+    ["Audio synthétisé", fmtMin(o.audio_seconds_out), `${fmt(o.characters)} caractères`],
+    ["En cours", report.live ? fmt(report.live.in_flight) : "—", `max ${report.limits.max_inflight}`],
+    ["Mémoire GPU", report.gpu ? `${fmt(report.gpu.used_gb)} / ${fmt(report.gpu.total_gb)} Go` : "—", report.gpu ? report.gpu.name : "GPU non détecté"],
+    ["Clés actives", fmt(report.keys.filter((k) => !k.revoked_at).length), `${report.keys.length} au total`],
+  ];
+  const box = $("kpis");
+  box.replaceChildren(...items.map(([label, value, sub]) => {
+    const card = el("div", null, "kpi");
+    card.append(el("div", label, "label"), el("div", value, "value"), el("div", sub, "sub"));
+    return card;
+  }));
+}
+
+function renderChart(report) {
+  // Hourly buckets for up to 48 h, daily beyond.
+  const daily = report.hours > 48;
+  const buckets = new Map();
+  for (const { hour, requests } of report.requests_per_hour) {
+    const label = daily ? hour.slice(0, 10) : hour.slice(0, 13);
+    buckets.set(label, (buckets.get(label) || 0) + requests);
+  }
+  $("chart-title").textContent = daily ? "Requêtes par jour" : "Requêtes par heure";
+  const entries = [...buckets.entries()];
+  const box = $("chart");
+  if (!entries.length) { box.replaceChildren(el("p", "Aucune requête sur la période.", "muted")); return; }
+  // Fixed drawing width, scaled uniformly: bars share it, labels keep their shape.
+  const width = 1000, height = 140, slot = width / entries.length, max = Math.max(...entries.map((e) => e[1]));
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height + 22}`);
+  svg.setAttribute("width", "100%");
+  entries.forEach(([label, count], i) => {
+    const h = Math.max(2, (count / max) * (height - 14));
+    const rect = document.createElementNS(ns, "rect");
+    rect.setAttribute("x", i * slot + slot * 0.12); rect.setAttribute("y", height - h);
+    rect.setAttribute("width", Math.max(1, slot * 0.76)); rect.setAttribute("height", h);
+    rect.setAttribute("rx", 2); rect.setAttribute("fill", "var(--bar)");
+    const title = document.createElementNS(ns, "title");
+    title.textContent = `${daily ? label : label.replace("T", " ") + ":00 UTC"} : ${count} requêtes`;
+    rect.append(title);
+    svg.append(rect);
+    if (i % Math.ceil(entries.length / 12) === 0) {
+      const text = document.createElementNS(ns, "text");
+      text.setAttribute("x", i * slot + slot * 0.12); text.setAttribute("y", height + 16);
+      text.setAttribute("font-size", "13");
+      text.textContent = daily ? label.slice(5) : label.slice(11) + "h";
+      svg.append(text);
+    }
+  });
+  box.replaceChildren(svg);
+}
+
+function table(id, headers, rows) {
+  const head = el("tr");
+  headers.forEach(([label, num]) => head.append(el("th", label, num ? "num" : "")));
+  const thead = el("thead"); thead.append(head);
+  const tbody = el("tbody");
+  rows.forEach((cells) => {
+    const tr = el("tr");
+    cells.forEach((cell, i) => {
+      const td = el("td", null, headers[i][1] ? "num" : "");
+      cell instanceof Node ? td.append(cell) : (td.textContent = cell);
+      tr.append(td);
+    });
+    tbody.append(tr);
+  });
+  $(id).replaceChildren(thead, tbody);
+}
+
+function renderRoutes(report) {
+  table("routes",
+    [["Route"], ["Requêtes", 1], ["Erreurs", 1], ["Refus", 1], ["Latence p50", 1], ["p95", 1], ["Inférence p50", 1]],
+    Object.entries(report.routes).map(([route, s]) => [
+      route, fmt(s.requests), fmt(s.errors), fmt(s.rate_limited), fmtMs(s.latency_ms_p50), fmtMs(s.latency_ms_p95), fmtMs(s.inference_ms_p50),
+    ]));
+  if (report.unknown_key_requests) {
+    $("routes").append(el("caption", `${report.unknown_key_requests} requête(s) sans clé valide sur la période.`, "muted"));
+  }
+}
+
+function renderKeys(report) {
+  table("keys",
+    [["Équipe"], ["Clé"], ["État"], [""], ["Requêtes", 1], ["Erreurs", 1], ["Refus", 1], ["Audio ASR", 1], ["Audio TTS", 1], ["Latence p50", 1], ["Dernier usage"], ["Créée le"]],
+    report.keys.map((k) => {
+      const badge = el("span", k.revoked_at ? "révoquée" : "active", `badge ${k.revoked_at ? "revoked" : "active"}`);
+      let action = el("span", "");
+      if (!k.revoked_at) {
+        action = el("button", "Révoquer", "danger");
+        action.addEventListener("click", () => revoke(k));
+      }
+      return [k.name, el("code", k.key_preview), badge, action, fmt(k.requests), fmt(k.errors), fmt(k.rate_limited),
+        fmtMin(k.audio_seconds_in), fmtMin(k.audio_seconds_out), fmtMs(k.latency_ms_p50), fmtDate(k.last_used_at), fmtDate(k.created_at)];
+    }));
+}
+
+async function load() {
+  $("app-error").textContent = "";
+  try {
+    const report = await api(`/admin/usage?hours=${$("hours").value}`);
+    renderKpis(report); renderChart(report); renderRoutes(report); renderKeys(report);
+    $("updated").textContent = `Mis à jour à ${new Date().toLocaleTimeString("fr-FR")}`;
+  } catch (e) {
+    if (e.message !== "401") $("app-error").textContent = `Erreur : ${e.message}`;
+  }
+}
+
+async function revoke(key) {
+  if (!confirm(`Révoquer la clé de « ${key.name} » (${key.key_preview}) ? L'équipe ne pourra plus appeler l'API avec.`)) return;
+  try { await api(`/admin/keys/${encodeURIComponent(key.id)}`, { method: "DELETE" }); await load(); }
+  catch (e) { $("app-error").textContent = `Révocation impossible : ${e.message}`; }
+}
+
+$("create-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const name = $("key-name").value.trim();
+  if (!name) return;
+  try {
+    const created = await api("/admin/keys", { method: "POST", body: JSON.stringify({ name }) });
+    $("new-key-name").textContent = created.name;
+    $("new-key-value").textContent = created.key;
+    $("new-key").classList.remove("hidden");
+    $("key-name").value = "";
+    await load();
+  } catch (e) { $("app-error").textContent = `Création impossible : ${e.message}`; }
+});
+
+$("copy-key").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("new-key-value").textContent); $("copy-key").textContent = "Copiée"; }
+  catch { $("copy-key").textContent = "Sélectionnez et copiez"; }
+});
+$("hide-key").addEventListener("click", () => {
+  $("new-key-value").textContent = "";
+  $("new-key").classList.add("hidden");
+  $("copy-key").textContent = "Copier";
+});
+
+function start() {
+  $("login").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  $("logout").classList.remove("hidden");
+  load();
+  clearInterval(timer);
+  timer = setInterval(load, 30000);
+}
+
+function logout(message = "") {
+  adminKey = null; storageSet(null); clearInterval(timer);
+  $("app").classList.add("hidden");
+  $("logout").classList.add("hidden");
+  $("login").classList.remove("hidden");
+  $("login-error").textContent = message;
+  $("updated").textContent = "";
+}
+
+$("login-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  adminKey = $("admin-key").value.trim();
+  $("admin-key").value = "";
+  try {
+    await api("/admin/usage?hours=1");
+    storageSet(adminKey);
+    start();
+  } catch (e) {
+    if (e.message !== "401") $("login-error").textContent = `Connexion impossible : ${e.message}`;
+  }
+});
+$("logout").addEventListener("click", () => logout());
+$("refresh").addEventListener("click", load);
+$("hours").addEventListener("change", load);
+
+adminKey = storageGet();
+if (adminKey) start();
+</script>
+</body>
+</html>

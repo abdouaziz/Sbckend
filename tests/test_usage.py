@@ -108,3 +108,15 @@ def test_langfuse_disabled_without_configuration():
     assert not langfuse_export.enabled()
     langfuse_export.enqueue({"ts": "x"})  # no-op, no thread started
     assert langfuse_export._thread is None
+
+
+def test_admin_page_is_served_without_key_with_strict_headers():
+    from fastapi.testclient import TestClient
+    from backend.routes import admin_ui
+
+    app = FastAPI()
+    app.include_router(admin_ui.router)
+    response = TestClient(app).get("/admin/ui")
+    assert response.status_code == 200 and "Kiriku Admin" in response.text
+    assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
+    assert response.headers["cache-control"] == "no-store"

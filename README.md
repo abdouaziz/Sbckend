@@ -120,6 +120,9 @@ curl -X POST "http://localhost:8000/transcribe?language=wolof" \
 
 ### Managing keys
 
+**Dashboard.** Open `/admin/ui` in a browser and enter the admin key: usage KPIs (requests, errors, rate-limited requests, latency, inference time, audio minutes, in-flight requests, GPU memory), requests per hour or per day, usage per route and per key, key creation (the key is shown once) and revocation. The page holds no data itself: everything comes from the `/admin` routes. The key stays in the browser tab (`sessionStorage`) and is sent only to this API.
+
+
 The admin routes are authenticated with `ADMIN_API_KEY`:
 
 ```bash

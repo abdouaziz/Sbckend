@@ -6,7 +6,7 @@ from backend.services.stt import transcribe_bytes, STTException
 from backend.api_docs import build_description
 from backend.middleware.limits import LimitsMiddleware
 from backend.middleware.usage import UsageMiddleware
-from backend.routes import admin, v1
+from backend.routes import admin, admin_ui, v1
 from backend.routes.auth import require_api_key
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.exception_handlers import http_exception_handler
@@ -45,6 +45,7 @@ app.add_middleware(
 )
 
 app.include_router(v1.router)
+app.include_router(admin_ui.router)
 app.include_router(admin.router)
 
 
