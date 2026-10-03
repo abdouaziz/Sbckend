@@ -7,7 +7,7 @@ import soundfile
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
 
 from backend.routes.auth import require_api_key
@@ -40,7 +40,7 @@ def _language(value: str) -> str:
     return language
 
 
-@router.get("/models")
+@router.get("/models", summary="List the models")
 def list_models():
     return {
         "object": "list",
@@ -51,13 +51,30 @@ def list_models():
     }
 
 
-@router.post("/audio/transcriptions")
+# Allowed values are shown in the docs (enum) but checked in code, so that a wrong
+# value gets an OpenAI-format error rather than FastAPI's validation error.
+ASR_LANGUAGES = ["wolof", "wo", "pulaar", "ff", "pu", "serer", "srr", "se"]
+
+
+@router.post(
+    "/audio/transcriptions",
+    summary="Speech to text",
+    description="Transcribes an audio file in Wolof, Pulaar or Serer. Same request as OpenAI's "
+    "`client.audio.transcriptions.create`.",
+)
 def create_transcription(
     request: Request,
-    file: UploadFile = File(...),
-    model: str = Form(...),
-    language: Optional[str] = Form(None),
-    response_format: str = Form("json"),
+    file: UploadFile = File(..., description="Audio file: wav, mp3, ogg, m4a… Up to 60 s and 25 MB."),
+    model: str = Form(..., description="Must be `m-kiriku-asr`.", json_schema_extra={"enum": [STT_MODEL]}),
+    language: Optional[str] = Form(
+        None,
+        description="Language spoken in the audio. Recommended: omit it only if you do not know it. "
+        "`wolof` (or `wo`), `pulaar` (or `ff`, `pu`), `serer` (or `srr`, `se`).",
+        json_schema_extra={"enum": ASR_LANGUAGES},
+    ),
+    response_format: str = Form(
+        "json", description="`json`: `{\"text\": \"...\"}`; `text`: plain text.", json_schema_extra={"enum": ["json", "text"]}
+    ),
 ):
     _check_model(model, STT_MODEL)
     if response_format not in ("json", "text"):
@@ -81,16 +98,33 @@ def create_transcription(
 
 
 class SpeechRequest(BaseModel):
-    model: str
-    input: str
-    voice: str
-    speed: Optional[float] = None
-    response_format: str = "wav"
+    model: str = Field(description="Must be `kiriku-tts`.", json_schema_extra={"enum": [TTS_MODEL], "example": TTS_MODEL})
+    input: str = Field(
+        description="Text to speak, 512 characters at most. Write numbers above 10 in words.",
+        json_schema_extra={"example": "Salaam aleekum, na nga def?"},
+    )
+    voice: str = Field(
+        description="Language of the voice: `wolof` (or `wo`), `pulaar` (or `ff`, `pu`). No Serer voice.",
+        json_schema_extra={"enum": ["wolof", "wo", "pulaar", "ff", "pu"], "example": "wolof"},
+    )
+    speed: Optional[float] = Field(
+        None, description="From 0 to 2, higher is faster. Default: 1.2 for Wolof, 1.0 for Pulaar."
+    )
+    response_format: str = Field("wav", description="Only `wav` is supported.", json_schema_extra={"enum": ["wav"]})
     # Not part of the OpenAI API: pass it with extra_body={"pitch": 0.2}.
-    pitch: Optional[float] = None
+    pitch: Optional[float] = Field(
+        None, description="From -1 to 1: shifts the voice by up to 4 semitones. SDK: `extra_body={\"pitch\": 0.2}`."
+    )
 
 
-@router.post("/audio/speech")
+@router.post(
+    "/audio/speech",
+    summary="Text to speech",
+    description="Synthesizes Wolof or Pulaar speech and returns a WAV file. Same request as OpenAI's "
+    "`client.audio.speech.create`.",
+    response_class=FileResponse,
+    responses={200: {"content": {"audio/wav": {}}, "description": "WAV audio, 22.05 kHz."}},
+)
 def create_speech(body: SpeechRequest, request: Request):
     _check_model(body.model, TTS_MODEL)
     voice = _language(body.voice)
