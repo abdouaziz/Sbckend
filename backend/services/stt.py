@@ -72,6 +72,11 @@ def _decoder_input_ids(processor: WhisperProcessor, language: str) -> torch.Tens
 
 
 def transcribe(audio_path: str, language: Optional[str] = None) -> str:
+    return transcribe_with_duration(audio_path, language)[0]
+
+
+def transcribe_with_duration(audio_path: str, language: Optional[str] = None) -> tuple[str, float]:
+    """Transcription and duration of the audio in seconds."""
     if language is not None and language not in SUPPORTED_LANGUAGES:
         raise STTException(f"Unsupported language: {language}")
 
@@ -118,17 +123,22 @@ def transcribe(audio_path: str, language: Optional[str] = None) -> str:
         raise STTException(f"Failed to transcribe audio: {e}") from e
 
     text = " ".join(t for t in texts if t)
-    logger.info(f"Transcription: {text}")
-    return text
+    # Never log the transcription itself: it is user content.
+    logger.info(f"Transcribed {duration:.1f}s of audio into {len(text)} characters")
+    return text, duration
 
 
 def transcribe_bytes(data: bytes, filename: Optional[str], language: Optional[str] = None) -> str:
     """Transcribe an uploaded file; the extension of `filename` tells the decoder the audio format."""
+    return transcribe_bytes_with_duration(data, filename, language)[0]
+
+
+def transcribe_bytes_with_duration(data: bytes, filename: Optional[str], language: Optional[str] = None) -> tuple[str, float]:
     suffix = os.path.splitext(filename or "")[1] or ".wav"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as fp:
         fp.write(data)
         audio_path = fp.name
     try:
-        return transcribe(audio_path, language)
+        return transcribe_with_duration(audio_path, language)
     finally:
         os.remove(audio_path)

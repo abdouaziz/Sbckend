@@ -125,7 +125,8 @@ def tts_vocalizer(text: str, language: str = "wolof" , speed:float=1.0 , pitch:f
         raise TTSException(f"Text too long: {len(text)} characters, the maximum is {MAX_TTS_CHARS}")
 
     translation = convert_numbers_to_french(text.lower())
-    logger.info(f"Synthesizing text: {translation}")
+    # Never log the text itself: it is user content.
+    logger.info(f"Synthesizing {len(translation)} characters ({language})")
 
     synthesizer = get_synthesizer(language)
 

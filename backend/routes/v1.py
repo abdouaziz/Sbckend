@@ -1,14 +1,17 @@
 """OpenAI-compatible API, usable with the official SDK: OpenAI(api_key="sk-kiriku-...", base_url=".../v1")."""
 import os
+import time
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, PlainTextResponse
+import soundfile
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 from starlette.background import BackgroundTask
 
 from backend.routes.auth import require_api_key
-from backend.services.stt import STTException, transcribe_bytes
+from backend.services.stt import STTException, transcribe_bytes_with_duration
 from backend.services.tts import DEFAULT_PITCH, DEFAULT_SPEED_BY_LANGUAGE, TTSException, tts_vocalizer
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(require_api_key)])
@@ -50,6 +53,7 @@ def list_models():
 
 @router.post("/audio/transcriptions")
 def create_transcription(
+    request: Request,
     file: UploadFile = File(...),
     model: str = Form(...),
     language: Optional[str] = Form(None),
@@ -59,14 +63,21 @@ def create_transcription(
     if response_format not in ("json", "text"):
         raise HTTPException(status_code=400, detail="response_format must be 'json' or 'text'")
 
+    start = time.perf_counter()
     try:
-        text = transcribe_bytes(file.file.read(), file.filename, _language(language) if language else None)
+        text, duration = transcribe_bytes_with_duration(
+            file.file.read(), file.filename, _language(language) if language else None
+        )
     except STTException as e:
         raise HTTPException(status_code=400, detail=str(e))
+    inference = time.perf_counter() - start
+    # Read by UsageMiddleware: metadata only, never the transcription.
+    request.state.usage = {"model": model, "audio_seconds": round(duration, 2), "inference_ms": int(inference * 1000)}
+    headers = {"X-Inference-Seconds": f"{inference:.3f}"}
 
     if response_format == "text":
-        return PlainTextResponse(text)
-    return {"text": text}
+        return PlainTextResponse(text, headers=headers)
+    return JSONResponse({"text": text}, headers=headers)
 
 
 class SpeechRequest(BaseModel):
@@ -80,7 +91,7 @@ class SpeechRequest(BaseModel):
 
 
 @router.post("/audio/speech")
-def create_speech(body: SpeechRequest):
+def create_speech(body: SpeechRequest, request: Request):
     _check_model(body.model, TTS_MODEL)
     voice = _language(body.voice)
     if voice not in TTS_VOICES:
@@ -90,11 +101,22 @@ def create_speech(body: SpeechRequest):
 
     speed = body.speed if body.speed is not None else DEFAULT_SPEED_BY_LANGUAGE.get(voice, 1.0)
     pitch = body.pitch if body.pitch is not None else DEFAULT_PITCH
+    start = time.perf_counter()
     try:
         audio_file_path = tts_vocalizer(body.input, voice, speed=speed, pitch=pitch)
     except TTSException as e:
         raise HTTPException(status_code=400, detail=str(e))
+    inference = time.perf_counter() - start
+    request.state.usage = {
+        "model": body.model,
+        "characters": len(body.input),
+        "audio_seconds": round(soundfile.info(audio_file_path).duration, 2),
+        "inference_ms": int(inference * 1000),
+    }
 
     return FileResponse(
-        audio_file_path, media_type="audio/wav", background=BackgroundTask(os.remove, audio_file_path)
+        audio_file_path,
+        media_type="audio/wav",
+        headers={"X-Inference-Seconds": f"{inference:.3f}"},
+        background=BackgroundTask(os.remove, audio_file_path),
     )

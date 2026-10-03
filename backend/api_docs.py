@@ -3,11 +3,23 @@
 Limits are read from the same settings as the middleware and the TTS service,
 so the documentation always matches what the server enforces.
 """
+import os
+
 from backend.middleware.limits import limit_settings
+
+
+def public_base_url() -> str:
+    """URL shown in the examples: PUBLIC_BASE_URL, else the RunPod proxy URL of this pod."""
+    if os.environ.get("PUBLIC_BASE_URL"):
+        return os.environ["PUBLIC_BASE_URL"].rstrip("/")
+    if os.environ.get("RUNPOD_POD_ID"):
+        return f"https://{os.environ['RUNPOD_POD_ID']}-{os.environ.get('PORT', '8000')}.proxy.runpod.net"
+    return "<this server>"
 
 
 def build_description(max_tts_chars: int) -> str:
     limits = limit_settings()
+    base_url = public_base_url()
     return f"""
 Speech-to-text and text-to-speech for **Wolof** and **Pulaar**, compatible with the
 official OpenAI SDK: keep your code, change `base_url` and `api_key`.
@@ -23,7 +35,7 @@ from this page. Keep the key secret: do not commit it nor put it in client-side 
 ```python
 from openai import OpenAI
 
-client = OpenAI(api_key="sk-kiriku-...", base_url="<this server>/v1")
+client = OpenAI(api_key="sk-kiriku-...", base_url="{base_url}/v1")
 
 # Text-to-speech -> WAV file
 client.audio.speech.create(
@@ -36,7 +48,7 @@ with open("out.wav", "rb") as f:
 ```
 
 ```bash
-curl <this server>/v1/audio/speech -H "Authorization: Bearer sk-kiriku-..." \\
+curl {base_url}/v1/audio/speech -H "Authorization: Bearer sk-kiriku-..." \\
   -H "Content-Type: application/json" \\
   -d '{{"model": "kiriku-tts", "voice": "wolof", "input": "Salaam aleekum"}}' -o out.wav
 ```

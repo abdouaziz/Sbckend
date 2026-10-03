@@ -27,6 +27,8 @@ logger = get_logger("LIMITS")
 
 # Only inference routes are limited; /ping, /docs and /admin are not.
 LIMITED_PREFIXES = ("/v1/", "/synthesize", "/transcribe")
+# The running instance, read by /admin/usage for live counters.
+CURRENT = None
 WINDOW_SECONDS = 60.0
 
 
@@ -46,6 +48,8 @@ def limit_settings() -> dict[str, int]:
 
 class LimitsMiddleware:
     def __init__(self, app, rate_per_minute=None, max_concurrent_per_key=None, max_inflight=None, max_upload_mb=None):
+        global CURRENT
+        CURRENT = self
         self.app = app
         settings = limit_settings()
         self.rate_per_minute = rate_per_minute or settings["rate_per_minute"]
@@ -102,6 +106,9 @@ class LimitsMiddleware:
             await self.app(scope, replay_receive, send)
         finally:
             self._release(client)
+
+    def live(self) -> dict:
+        return {"in_flight": self._total_in_flight, "keys_in_flight": len(self._in_flight)}
 
     @staticmethod
     def _client_id(authorization: bytes):

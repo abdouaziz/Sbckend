@@ -5,6 +5,7 @@ from backend.services.tts import tts_vocalizer, TTSException, DEFAULT_SPEED_BY_L
 from backend.services.stt import transcribe_bytes, STTException
 from backend.api_docs import build_description
 from backend.middleware.limits import LimitsMiddleware
+from backend.middleware.usage import UsageMiddleware
 from backend.routes import admin, v1
 from backend.routes.auth import require_api_key
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
@@ -30,8 +31,10 @@ app = FastAPI(
     description=build_description(MAX_TTS_CHARS),
 )
 
-# Added first so that CORS stays outermost and also covers the 429/413/503 responses.
+# Order, from outermost: CORS, usage journal, limits. The journal sits outside the
+# limits so refused requests (429/413/503) are recorded, and CORS covers them all.
 app.add_middleware(LimitsMiddleware)
+app.add_middleware(UsageMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
