@@ -1,3 +1,4 @@
+import importlib
 import os
 import re
 import tempfile
@@ -13,6 +14,15 @@ setup_logging()
 logger = get_logger("TTS-API")
 
 SUPPORTED_LANGUAGES = ["wolof","pulaar"]
+
+# Coqui prints user text to stdout: the sentences it synthesizes, and each character it
+# discards. Silence print() in those modules only, so user text never reaches the logs
+# (a module-level `print` shadows the builtin there, without touching other threads).
+for _module in ("TTS.utils.synthesizer", "TTS.tts.utils.text.tokenizer"):
+    try:
+        importlib.import_module(_module).print = lambda *args, **kwargs: None
+    except ImportError:
+        pass
 
 DEFAULT_SPEED_BY_LANGUAGE = {"wolof": 1.2, "pulaar": 1.0}
 DEFAULT_PITCH = 0.0
