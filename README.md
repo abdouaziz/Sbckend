@@ -463,6 +463,12 @@ Known issues and planned improvements, most useful first.
   writing (no retroactive collection; teams must have the consent of the people they record); writes after the
   response is sent (no latency impact); a regular export to safe storage (e.g. a private Hugging Face dataset) since
   `/workspace` is tied to one machine; deletion of a team's data on request.
+- [ ] **Deploy from a private repository.** The RunPod pod fetches the code anonymously at startup, so it only
+  works while this repository is public. Two ways out: (1) a fine-grained GitHub token, created by the repository
+  owner, read-only on this repository, given to the pod as `GITHUB_TOKEN` and used in the fetch URL, with `set +x`
+  around it so it never reaches the logs; (2) better, a GitHub Action that builds the image on each push and
+  publishes it privately on GHCR, pulled by RunPod with registry credentials: restarts in seconds instead of
+  reinstalling packages, and a fixed, reproducible version.
 - [ ] **Daily quotas per key** (audio minutes, characters), on top of the rate limits.
 - [ ] **Shared key store** if the API ever runs on several replicas: keys, usage and rate limits are local to one
   process today.
