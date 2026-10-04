@@ -463,6 +463,13 @@ Known issues and planned improvements, most useful first.
   writing (no retroactive collection; teams must have the consent of the people they record); writes after the
   response is sent (no latency impact); a regular export to safe storage (e.g. a private Hugging Face dataset) since
   `/workspace` is tied to one machine; deletion of a team's data on request.
+- [ ] **Make this repository the public reference integration of Kiriku** (pending AI Hub's decision), so that
+  anyone can clone it to serve the models on their own infrastructure. Before opening it: a `LICENSE` chosen by
+  AI Hub (none today, so no reuse is allowed), checked against the model and Coqui TTS (MPL-2.0) licences; merge
+  `test` into `main` and make it the default branch (`dev` still holds the first version); purge `.env` and
+  `data/api_keys.db` from the history (`git filter-repo`, force-push, coordinated with everyone who cloned it);
+  a deployment guide for a RunPod pod and the latest environment variables. Then move it to a GitHub organization
+  (AI Hub Senegal) rather than a personal account.
 - [ ] **Deploy from a private repository.** The RunPod pod fetches the code anonymously at startup, so it only
   works while this repository is public. Two ways out: (1) a fine-grained GitHub token, created by the repository
   owner, read-only on this repository, given to the pod as `GITHUB_TOKEN` and used in the fetch URL, with `set +x`
