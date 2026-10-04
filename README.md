@@ -438,6 +438,21 @@ uv run --no-project --with fastapi --with python-multipart --with httpx --with p
 
 Unit tests run without models or GPU; `scripts/smoke_test.py` tests a running server.
 
+## Deployment on the RunPod pod (Kiriku challenge)
+
+The challenge API runs on a RunPod GPU pod (RTX 4090) with a persistent volume at `/workspace`. The pod does not use
+the Docker image: it starts from `python:3.11-slim` and its start command installs the system packages, fetches the
+**`prod` branch** of this repository into `/workspace/app`, creates the virtualenv and downloads the TTS checkpoints
+the first time only (all cached on the volume), then starts uvicorn.
+
+- **`test`** is the working branch; pushing to it never changes production.
+- **`prod`** is what the pod runs. To deploy a tested version: `git push origin test:prod`, then restart the pod
+  (RunPod console, *Restart*). The served version is shown at the bottom of `/docs` ("About this API").
+- A restart takes about 1 min 15 s (packages, then model preload); `/ping` answers `503 loading` meanwhile.
+- If GitHub is unreachable at startup (e.g. the repository is private), the pod keeps the last `prod` version it
+  fetched.
+- Secrets (`ADMIN_API_KEY`, `HF_TOKEN`, `LANGFUSE_*`) are pod environment variables, set in the RunPod console.
+
 ## Roadmap
 
 Known issues and planned improvements, most useful first.
