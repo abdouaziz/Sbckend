@@ -455,6 +455,14 @@ Known issues and planned improvements, most useful first.
   suggests; measure on the target GPU before adopting it.
 - [ ] **Smaller audio responses.** Speech is returned as WAV only; add `mp3`/`opus` (`response_format`) to cut
   download time, which dominates on long sentences.
+- [ ] **Opt-in data collection for future model training** (decided in principle, governance first). What is worth
+  keeping is the audio sent for transcription with its output, and the text sent for synthesis — not the
+  synthesized WAV, which is the model's own voice. Before any code: who owns the dataset (AI Hub, Vie Publique),
+  purpose, access, retention, publication and licence, and a legal check (voice is personal data: Senegal law
+  2008-12, CDP). Then: an opt-in flag per key, off by default and set from `/admin/ui` once the team agreed in
+  writing (no retroactive collection; teams must have the consent of the people they record); writes after the
+  response is sent (no latency impact); a regular export to safe storage (e.g. a private Hugging Face dataset) since
+  `/workspace` is tied to one machine; deletion of a team's data on request.
 - [ ] **Daily quotas per key** (audio minutes, characters), on top of the rate limits.
 - [ ] **Shared key store** if the API ever runs on several replicas: keys, usage and rate limits are local to one
   process today.
