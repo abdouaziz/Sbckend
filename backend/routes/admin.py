@@ -1,3 +1,6 @@
+import os
+import shutil
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -38,7 +41,19 @@ def get_usage(hours: float = 24):
     report["live"] = limits.CURRENT.live() if limits.CURRENT else None
     report["limits"] = limits.limit_settings()
     report["gpu"] = _gpu_memory()
+    report["disk"] = _disk_usage()
     return report
+
+
+def _disk_usage():
+    """Space on the volume holding the keys database (/workspace on the RunPod pod)."""
+    try:
+        path = os.path.dirname(os.path.abspath(os.environ.get("API_KEYS_DB", "data/api_keys.db")))
+        total, used, free = shutil.disk_usage(path)
+        return {"path": path, "used_gb": round(used / 1e9, 1), "free_gb": round(free / 1e9, 1),
+                "total_gb": round(total / 1e9, 1), "percent": round(100 * used / total, 1)}
+    except Exception:
+        return None
 
 
 def _gpu_memory():

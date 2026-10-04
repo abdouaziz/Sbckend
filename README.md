@@ -413,7 +413,7 @@ docker cp sbckend:/data/api_keys.backup.db ./api_keys-$(date +%F).db
 - **One worker, one instance.** Keep uvicorn at a single worker (the default command): each worker would load its own copy of the models. Keys are stored in a local SQLite file, so several instances cannot share them without moving to a shared database.
 - **Requests are processed one at a time per model.** Inference is serialized by locks; concurrent requests wait in turn. For more throughput, use a faster GPU or move the STT model to [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (see the model card).
 - **Rate limits** are enforced per key by `backend/middleware/limits.py`, above routing, so an over-limit client is refused before its upload is read. Counters live in memory: they reset on restart and assume a single process. Errors use the OpenAI format; the SDK retries `429` responses after `Retry-After` on its own.
-- **Usage journal.** Every inference request, refused ones included, is recorded in the `usage` table of the keys database: key, route, status, latency, model, audio duration, text length and inference time. Never the audio or the text: the logs only hold sizes. `GET /admin/usage?hours=24` (admin key) returns totals per key and per route, counts per HTTP status, failed requests grouped by route, status and team (`failures`), requests per hour, live counters and GPU memory. Responses carry an `X-Inference-Seconds` header with the model time alone.
+- **Usage journal.** Every inference request, refused ones included, is recorded in the `usage` table of the keys database: key, route, status, latency, model, audio duration, text length and inference time. Never the audio or the text: the logs only hold sizes. `GET /admin/usage?hours=24` (admin key) returns totals per key and per route, disk usage of the data volume, counts per HTTP status, failed requests grouped by route, status and team (`failures`), requests per hour, live counters and GPU memory. Responses carry an `X-Inference-Seconds` header with the model time alone.
 - **Langfuse (optional).** With the three `LANGFUSE_*` variables set, each request is also sent to Langfuse as a trace (user = key name), in batches from a background thread. The SQLite journal stays the source of truth.
 - **No daily usage quotas** per key yet.
 
@@ -476,6 +476,9 @@ Known issues and planned improvements, most useful first.
   around it so it never reaches the logs; (2) better, a GitHub Action that builds the image on each push and
   publishes it privately on GHCR, pulled by RunPod with registry credentials: restarts in seconds instead of
   reinstalling packages, and a fixed, reproducible version.
+- [ ] **Rotate `logs/app.log`.** It is written without rotation next to the code, on the persistent volume
+  (`/workspace/app/logs` on the pod), so it grows forever. Watch it with the dashboard disk figure; switch to a
+  `RotatingFileHandler` (e.g. 3 × 10 MB) if it grows.
 - [ ] **Daily quotas per key** (audio minutes, characters), on top of the rate limits.
 - [ ] **Shared key store** if the API ever runs on several replicas: keys, usage and rate limits are local to one
   process today.

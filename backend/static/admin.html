@@ -36,6 +36,8 @@
   .kpi .label { color: var(--muted); font-size: 12px; }
   .kpi .value { font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .kpi .sub { color: var(--muted); font-size: 12px; }
+  .kpi.alert { border-color: var(--danger); }
+  .kpi.alert .value { color: var(--danger); }
   .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
   th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -172,10 +174,13 @@ function renderKpis(report) {
     ["En cours", report.live ? fmt(report.live.in_flight) : "—", `max ${report.limits.max_inflight}`],
     ["Mémoire GPU", report.gpu ? `${fmt(report.gpu.used_gb)} / ${fmt(report.gpu.total_gb)} Go` : "—", report.gpu ? report.gpu.name : "GPU non détecté"],
     ["Clés actives", fmt(report.keys.filter((k) => !k.revoked_at).length), `${report.keys.length} au total`],
+    ["Disque", report.disk ? fmt(report.disk.percent, " %") : "—",
+      report.disk ? `${fmt(report.disk.used_gb)} / ${fmt(report.disk.total_gb)} Go · ${fmt(report.disk.free_gb)} Go libres` : "non mesuré",
+      report.disk && report.disk.percent >= 85],
   ];
   const box = $("kpis");
-  box.replaceChildren(...items.map(([label, value, sub]) => {
-    const card = el("div", null, "kpi");
+  box.replaceChildren(...items.map(([label, value, sub, alert]) => {
+    const card = el("div", null, alert ? "kpi alert" : "kpi");
     card.append(el("div", label, "label"), el("div", value, "value"), el("div", sub, "sub"));
     return card;
   }));

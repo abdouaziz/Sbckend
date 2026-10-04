@@ -137,3 +137,16 @@ async def test_failures_are_broken_down_by_route_status_and_team():
     [failure] = report["failures"]
     assert (failure["path"], failure["status"], failure["count"]) == ("/v1/audio/speech", 429, 2)
     assert failure["keys"] == {"team-a": 1, "(no valid key)": 1}
+
+
+def test_admin_usage_reports_disk_space(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from backend.routes import admin
+
+    monkeypatch.setenv("ADMIN_API_KEY", "adm")
+    monkeypatch.setenv("API_KEYS_DB", str(tmp_path / "keys.db"))
+    app = FastAPI()
+    app.include_router(admin.router)
+    disk = TestClient(app).get("/admin/usage", headers={"Authorization": "Bearer adm"}).json()["disk"]
+    assert disk["path"] == str(tmp_path)
+    assert 0 < disk["percent"] <= 100 and disk["used_gb"] + disk["free_gb"] <= disk["total_gb"] + 0.2
