@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -14,6 +15,7 @@ from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.background import BackgroundTask
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # Error types the OpenAI SDK maps to its exception classes.
@@ -89,7 +91,9 @@ async def synthesize(text: str, language: str = "wolof", speed: Optional[float] 
         if pitch is None:
             pitch = DEFAULT_PITCH
         audio_file_path = tts_vocalizer(text, language, speed=speed, pitch=pitch)
-        return FileResponse(audio_file_path, media_type="audio/wav", filename="output.wav")
+        # Delete the WAV once sent: user content is never kept on disk.
+        return FileResponse(audio_file_path, media_type="audio/wav", filename="output.wav",
+                            background=BackgroundTask(os.remove, audio_file_path))
     except TTSException as e:
         logger.error(f"{e}")
         raise HTTPException(status_code=400, detail=str(e))
