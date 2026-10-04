@@ -120,3 +120,20 @@ def test_admin_page_is_served_without_key_with_strict_headers():
     assert response.status_code == 200 and "Kiriku Admin" in response.text
     assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
     assert response.headers["cache-control"] == "no-store"
+
+
+async def test_failures_are_broken_down_by_route_status_and_team():
+    a = api_keys.create_key("team-a")
+    app = make_app(rate_per_minute=1)
+    async with client(app, a["key"]) as ca, client(app, "sk-kiriku-unknown") as cu:
+        await ca.post("/v1/audio/speech")                      # 200
+        await ca.post("/v1/audio/speech")                      # 429
+        await cu.post("/v1/audio/speech")                      # 200 (stub app has no auth)
+        await cu.post("/v1/audio/speech")                      # 429
+    report = usage.summary(hours=1)
+    assert report["overall"]["statuses"] == {"200": 2, "429": 2}
+    team = next(k for k in report["keys"] if k["name"] == "team-a")
+    assert team["statuses"] == {"200": 1, "429": 1}
+    [failure] = report["failures"]
+    assert (failure["path"], failure["status"], failure["count"]) == ("/v1/audio/speech", 429, 2)
+    assert failure["keys"] == {"team-a": 1, "(no valid key)": 1}

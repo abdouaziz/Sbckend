@@ -6,6 +6,7 @@ hex characters of the key's SHA-256, the same reference the rate limiter uses,
 so refused requests (429, 413) are attributed too.
 """
 import hashlib
+from collections import Counter
 import statistics
 import time
 from contextlib import closing
@@ -76,7 +77,25 @@ def _stats(rows: list) -> dict:
         "latency_ms_p95": _percentile(latencies, 95),
         "inference_ms_p50": _percentile(inference, 50),
         "last_request": max((r["ts"] for r in rows), default=None),
+        # Count per HTTP status, e.g. {"200": 120, "401": 3}.
+        "statuses": {str(code): n for code, n in sorted(Counter(r["status"] for r in rows).items())},
     }
+
+
+def _failures(rows: list, by_ref: dict) -> list[dict]:
+    """Failed requests grouped by route and status, with the teams concerned: what blocks whom."""
+    groups: dict[tuple[str, int], dict] = {}
+    for r in rows:
+        if r["status"] < 400:
+            continue
+        group = groups.setdefault((r["path"], r["status"]), {"path": r["path"], "status": r["status"], "count": 0, "keys": Counter(), "last": None})
+        group["count"] += 1
+        group["keys"][by_ref[r["key_ref"]]["name"] if r["key_ref"] in by_ref else "(no valid key)"] += 1
+        group["last"] = max(group["last"] or r["ts"], r["ts"])
+    return [
+        {**g, "keys": dict(g["keys"].most_common())}
+        for g in sorted(groups.values(), key=lambda g: g["count"], reverse=True)
+    ]
 
 
 def summary(hours: float = 24) -> dict:
@@ -110,6 +129,7 @@ def summary(hours: float = 24) -> dict:
         "unknown_key_requests": sum(1 for r in rows if r["key_ref"] not in by_ref),
         "routes": {route: _stats([r for r in rows if r["path"] == route]) for route in routes},
         "keys": per_key,
+        "failures": _failures(rows, by_ref),
         "requests_per_hour": [{"hour": h + ":00Z", "requests": n} for h, n in sorted(timeline.items())],
     }
 

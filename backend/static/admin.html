@@ -100,6 +100,11 @@
     </section>
 
     <section class="card">
+      <h2>Erreurs et refus</h2>
+      <div class="table-wrap"><table id="failures"></table></div>
+    </section>
+
+    <section class="card">
       <div class="row" style="justify-content: space-between">
         <h2>Clés API</h2>
         <form id="create-form" class="row">
@@ -243,9 +248,36 @@ function renderRoutes(report) {
   }
 }
 
+const STATUS_MEANING = {
+  400: "Requête invalide (langue, voix, texte trop long, audio > 60 s…)",
+  401: "Clé absente, invalide ou révoquée",
+  404: "Route ou modèle inconnu",
+  405: "Méthode HTTP non autorisée",
+  413: "Fichier trop gros",
+  422: "Corps de requête mal formé (champ manquant)",
+  429: "Limite de débit atteinte",
+  500: "Erreur du serveur",
+  502: "Serveur indisponible (redémarrage ?)",
+  503: "Serveur saturé ou en démarrage",
+};
+
+function renderFailures(report) {
+  const rows = report.failures || [];
+  if (!rows.length) { $("failures").replaceChildren(el("caption", "Aucune erreur sur la période.", "muted")); return; }
+  table("failures",
+    [["Route"], ["Code"], ["Signification"], ["Nombre", 1], ["Équipes"], ["Dernière"]],
+    rows.map((f) => [
+      f.path, String(f.status), STATUS_MEANING[f.status] || "", fmt(f.count),
+      Object.entries(f.keys).map(([name, n]) => `${name === "(no valid key)" ? "(sans clé valide)" : name} (${n})`).join(", "), fmtDate(f.last),
+    ]));
+}
+
+const errorCodes = (statuses) => Object.entries(statuses || {}).filter(([code]) => Number(code) >= 400)
+  .map(([code, n]) => `${code}×${n}`).join(" ") || "—";
+
 function renderKeys(report) {
   table("keys",
-    [["Équipe"], ["Clé"], ["État"], [""], ["Requêtes", 1], ["Erreurs", 1], ["Refus", 1], ["Audio ASR", 1], ["Audio TTS", 1], ["Latence p50", 1], ["Dernier usage"], ["Créée le"]],
+    [["Équipe"], ["Clé"], ["État"], [""], ["Requêtes", 1], ["Erreurs", 1], ["Refus", 1], ["Codes d'erreur"], ["Audio ASR", 1], ["Audio TTS", 1], ["Latence p50", 1], ["Dernier usage"], ["Créée le"]],
     report.keys.map((k) => {
       const badge = el("span", k.revoked_at ? "révoquée" : "active", `badge ${k.revoked_at ? "revoked" : "active"}`);
       let action = el("span", "");
@@ -254,7 +286,7 @@ function renderKeys(report) {
         action.addEventListener("click", () => revoke(k));
       }
       return [k.name, el("code", k.key_preview), badge, action, fmt(k.requests), fmt(k.errors), fmt(k.rate_limited),
-        fmtMin(k.audio_seconds_in), fmtMin(k.audio_seconds_out), fmtMs(k.latency_ms_p50), fmtDate(k.last_used_at), fmtDate(k.created_at)];
+        errorCodes(k.statuses), fmtMin(k.audio_seconds_in), fmtMin(k.audio_seconds_out), fmtMs(k.latency_ms_p50), fmtDate(k.last_used_at), fmtDate(k.created_at)];
     }));
 }
 
@@ -262,7 +294,7 @@ async function load() {
   $("app-error").textContent = "";
   try {
     const report = await api(`/admin/usage?hours=${$("hours").value}`);
-    renderKpis(report); renderChart(report); renderRoutes(report); renderKeys(report);
+    renderKpis(report); renderChart(report); renderRoutes(report); renderFailures(report); renderKeys(report);
     $("updated").textContent = `Mis à jour à ${new Date().toLocaleTimeString("fr-FR")}`;
   } catch (e) {
     if (e.message !== "401") $("app-error").textContent = `Erreur : ${e.message}`;
