@@ -8,4 +8,3 @@ librosa
 numpy
 huggingface_hub
 transformers
-num2words

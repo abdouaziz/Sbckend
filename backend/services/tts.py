@@ -1,5 +1,6 @@
 import importlib
 import os
+import re
 import tempfile
 import threading
 import numpy as np
@@ -8,7 +9,6 @@ import torch
 from TTS.utils.synthesizer import Synthesizer
 
 from backend.services.log import setup_logging, get_logger
-from backend.services.numbers import numbers_to_french
 
 setup_logging()
 logger = get_logger("TTS-API")
@@ -55,6 +55,12 @@ def _model_path(language: str) -> str:
 def _config_path(language: str) -> str:
     return os.path.join(_CHECKPOINTS_DIR, language, "config.json")
 
+NUMBER_WORDS = {
+    "0": "zéro", "1": "un", "2": "deux", "3": "trois", "4": "quatre",
+    "5": "cinq", "6": "six", "7": "sept", "8": "huit", "9": "neuf", "10": "dix",
+}
+
+_NUMBER_PATTERN = re.compile(r"\d+")
 
 _synthesizers: dict[str, Synthesizer] = {}
 _synthesizer_locks: dict[str, threading.Lock] = {}
@@ -104,8 +110,7 @@ def get_synthesizer(language: str) -> Synthesizer:
 
 
 def convert_numbers_to_french(text: str) -> str:
-    # The models cannot read digits: every number is spelled out in French words.
-    return numbers_to_french(text)
+    return _NUMBER_PATTERN.sub(lambda m: NUMBER_WORDS.get(m.group(), m.group()), text)
 
 
 
