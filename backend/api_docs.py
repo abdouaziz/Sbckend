@@ -138,11 +138,12 @@ Errors follow the OpenAI format, so the SDK raises its usual exceptions:
 
 - One voice per language. Output: WAV, 22.05 kHz.
 - The models read characters, not phonemes, from a lowercase alphabet. Text is
-  lowercased for you; **any other character outside the alphabet is silently
-  skipped**, not spelled out. Pulaar needs its own letters (`ɓ ɗ ƴ ŋ`): writing
+  lowercased for you; **other characters (symbols, emoji, letters of other
+  alphabets) are silently skipped**, not spelled out. Pulaar needs its own letters (`ɓ ɗ ƴ ŋ`): writing
   `b` for `ɓ` changes the pronunciation.
-- **Numbers**: only 0 to 10 are converted to words today (in French: "3" →
-  "trois"). Write larger numbers in words, otherwise they are skipped.
+- **Numbers** are spelled out in French words for you: "15 mars 2026" →
+  "quinze mars deux mille vingt-six"; also "10 000", "3,5", "18 %", "1er".
+  Write them in words yourself to have them said in Wolof or Pulaar.
 - {max_tts_chars} characters per request, about 45 s of audio. For longer texts,
   split by sentence and chain the requests.
 - `speed`: the default for Wolof is 1.2, chosen because it sounds more natural;
