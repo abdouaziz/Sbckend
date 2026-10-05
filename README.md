@@ -13,7 +13,7 @@ A FastAPI backend for speech technology in Senegalese languages:
 - All routes except `/ping` and `/admin` require an `sk-kiriku-...` API key
 - `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/models`: the same features behind the OpenAI API format, authenticated with `sk-kiriku-...` keys
 - `/admin/keys`: create, list and revoke API keys
-- Automatic conversion of digits to spoken French number words before synthesis
+- Automatic conversion of numbers (thousands, decimals, percentages, ordinals) to French words before synthesis
 
 ## Requirements
 
@@ -443,8 +443,9 @@ Unit tests run without models or GPU; `scripts/smoke_test.py` tests a running se
 
 The challenge API runs on a RunPod GPU pod (RTX 4090) with a persistent volume at `/workspace`. The pod does not use
 the Docker image: it starts from `python:3.11-slim` and its start command installs the system packages, fetches the
-**`prod` branch** of this repository into `/workspace/app`, creates the virtualenv and downloads the TTS checkpoints
-the first time only (all cached on the volume), then starts uvicorn.
+**`prod` branch** of this repository into `/workspace/app`, creates the virtualenv the first time and installs
+`requirements.txt` at every start (a few seconds when nothing changed, so new dependencies are picked up), downloads
+the TTS checkpoints the first time only (all cached on the volume), then starts uvicorn.
 
 - **`test`** is the working branch; pushing to it never changes production.
 - **`prod`** is what the pod runs. To deploy a tested version: `git push origin test:prod`, then restart the pod
@@ -458,9 +459,9 @@ the first time only (all cached on the volume), then starts uvicorn.
 
 Known issues and planned improvements, most useful first.
 
-- [ ] **Numbers in text-to-speech.** Only 0 to 10 are converted to words; the TTS alphabet has no digits, so any
-  other number is silently skipped ("le 15 mars 2026" loses its numbers). Convert every number with
-  `num2words(lang="fr")`, ordinals and years included.
+- [x] **Numbers in text-to-speech.** Only 0 to 10 were converted to words; for the TTS models digits are punctuation, so any
+  other number was not pronounced ("le 15 mars 2026" lost its numbers). Every number is now spelled out in
+  French with `num2words` (`backend/services/numbers.py`): thousands, decimals, percentages, ordinals.
 - [x] **`<|wo|>` in transcriptions.** The language tag the decoder starts with sometimes ends up at the start of the
   text (2 Wolof clips out of 8 in our benchmark), because `skip_special_tokens` does not cover the language tokens
   added to the tokenizer. Stripped from the output since this fix.
