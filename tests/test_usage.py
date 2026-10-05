@@ -139,14 +139,29 @@ async def test_failures_are_broken_down_by_route_status_and_team():
     assert failure["keys"] == {"team-a": 1, "(no valid key)": 1}
 
 
-def test_admin_usage_reports_disk_space(tmp_path, monkeypatch):
+def test_admin_usage_reports_volume_and_container_disk(tmp_path, monkeypatch):
+    import time
     from fastapi.testclient import TestClient
     from backend.routes import admin
+    from backend.services import storage
 
+    (tmp_path / "data.bin").write_bytes(b"0" * 300_000)
     monkeypatch.setenv("ADMIN_API_KEY", "adm")
     monkeypatch.setenv("API_KEYS_DB", str(tmp_path / "keys.db"))
+    monkeypatch.setenv("DATA_VOLUME_GB", "30")
+    monkeypatch.setattr(storage, "_cache", {"used_bytes": None, "measured_at": None, "running": False})
     app = FastAPI()
     app.include_router(admin.router)
-    disk = TestClient(app).get("/admin/usage", headers={"Authorization": "Bearer adm"}).json()["disk"]
-    assert disk["path"] == str(tmp_path)
-    assert 0 < disk["percent"] <= 100 and disk["used_gb"] + disk["free_gb"] <= disk["total_gb"] + 0.2
+    client = TestClient(app)
+    first = client.get("/admin/usage", headers={"Authorization": "Bearer adm"}).json()["disk"]
+    assert first["volume"]["path"] == str(tmp_path)
+    for _ in range(50):  # the walk runs in a background thread
+        if storage._cache["measured_at"]:
+            break
+        time.sleep(0.05)
+    disk = client.get("/admin/usage", headers={"Authorization": "Bearer adm"}).json()["disk"]
+    volume = disk["volume"]
+    # The figure is the size of the directory, not of the filesystem it lives on.
+    assert storage._cache["used_bytes"] >= 300_000 and volume["quota_gib"] == 30.0
+    assert volume["percent"] is not None and volume["percent"] < 1
+    assert 0 < disk["container"]["percent"] <= 100

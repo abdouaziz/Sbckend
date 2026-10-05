@@ -1,12 +1,9 @@
-import os
-import shutil
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from backend.routes.auth import require_admin
 from backend.middleware import limits
-from backend.services import usage
+from backend.services import storage, usage
 from backend.services.api_keys import create_key, list_keys, revoke_key
 
 # Hidden from the public Swagger: reachable only with ADMIN_API_KEY.
@@ -41,19 +38,10 @@ def get_usage(hours: float = 24):
     report["live"] = limits.CURRENT.live() if limits.CURRENT else None
     report["limits"] = limits.limit_settings()
     report["gpu"] = _gpu_memory()
-    report["disk"] = _disk_usage()
+    report["disk"] = storage.usage()
     return report
 
 
-def _disk_usage():
-    """Space on the volume holding the keys database (/workspace on the RunPod pod)."""
-    try:
-        path = os.path.dirname(os.path.abspath(os.environ.get("API_KEYS_DB", "data/api_keys.db")))
-        total, used, free = shutil.disk_usage(path)
-        return {"path": path, "used_gb": round(used / 1e9, 1), "free_gb": round(free / 1e9, 1),
-                "total_gb": round(total / 1e9, 1), "percent": round(100 * used / total, 1)}
-    except Exception:
-        return None
 
 
 def _gpu_memory():
@@ -62,7 +50,9 @@ def _gpu_memory():
 
         if not torch.cuda.is_available():
             return None
+        # Device-wide figures from the CUDA driver (same as nvidia-smi), in GiB like RunPod.
         free, total = torch.cuda.mem_get_info()
-        return {"name": torch.cuda.get_device_name(0), "used_gb": round((total - free) / 1e9, 2), "total_gb": round(total / 1e9, 2)}
+        return {"name": torch.cuda.get_device_name(0), "used_gib": round((total - free) / 1024**3, 1),
+                "total_gib": round(total / 1024**3, 1)}
     except Exception:
         return None

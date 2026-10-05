@@ -160,6 +160,15 @@ const fmtMs = (v) => (v === null || v === undefined ? "—" : v >= 1000 ? fmt(v 
 const fmtMin = (s) => (s ? fmt(s / 60, " min") : "0 min");
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "—");
 
+// The volume is measured in the background: the first figure arrives a few seconds after startup.
+function volumeTile(v) {
+  if (!v || v.used_gib === null) return ["Volume /workspace", "…", "mesure en cours, réessayez dans quelques secondes"];
+  const quota = v.quota_gib ? ` / ${fmt(v.quota_gib)} Go` : " (quota DATA_VOLUME_GB non renseigné)";
+  const when = v.measured_at ? `, mesuré à ${new Date(v.measured_at).toLocaleTimeString("fr-FR", { timeStyle: "short" })}` : "";
+  return ["Volume /workspace", v.percent !== null ? fmt(v.percent, " %") : `${fmt(v.used_gib)} Go`,
+    `${fmt(v.used_gib)}${quota}${when}`, v.percent !== null && v.percent >= 85];
+}
+
 function renderKpis(report) {
   const o = report.overall;
   const ok = o.requests - o.errors - o.rate_limited;
@@ -172,11 +181,12 @@ function renderKpis(report) {
     ["Audio transcrit", fmtMin(o.audio_seconds_in), "ASR"],
     ["Audio synthétisé", fmtMin(o.audio_seconds_out), `${fmt(o.characters)} caractères`],
     ["En cours", report.live ? fmt(report.live.in_flight) : "—", `max ${report.limits.max_inflight}`],
-    ["Mémoire GPU", report.gpu ? `${fmt(report.gpu.used_gb)} / ${fmt(report.gpu.total_gb)} Go` : "—", report.gpu ? report.gpu.name : "GPU non détecté"],
+    ["Mémoire GPU", report.gpu ? `${fmt(report.gpu.used_gib)} / ${fmt(report.gpu.total_gib)} Go` : "—", report.gpu ? report.gpu.name : "GPU non détecté"],
     ["Clés actives", fmt(report.keys.filter((k) => !k.revoked_at).length), `${report.keys.length} au total`],
-    ["Disque", report.disk ? fmt(report.disk.percent, " %") : "—",
-      report.disk ? `${fmt(report.disk.used_gb)} / ${fmt(report.disk.total_gb)} Go · ${fmt(report.disk.free_gb)} Go libres` : "non mesuré",
-      report.disk && report.disk.percent >= 85],
+    volumeTile(report.disk && report.disk.volume),
+    ["Disque conteneur", report.disk && report.disk.container ? fmt(report.disk.container.percent, " %") : "—",
+      report.disk && report.disk.container ? `${fmt(report.disk.container.used_gib)} / ${fmt(report.disk.container.total_gib)} Go, effacé à chaque redémarrage` : "non mesuré",
+      report.disk && report.disk.container && report.disk.container.percent >= 85],
   ];
   const box = $("kpis");
   box.replaceChildren(...items.map(([label, value, sub, alert]) => {
