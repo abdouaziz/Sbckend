@@ -88,7 +88,7 @@ Requires an API key (see [API keys](#api-keys)). Query parameters:
 |-----------|-------|---------|-------------|
 | `text`    | str   | required | Text to synthesize |
 | `language`| str   | `wolof` | `wolof` or `pulaar` |
-| `speed`   | float | `1.2` for Wolof, `1.0` for Pulaar | Speech speed, range `0.0`–`2.0` (higher = faster) |
+| `speed`   | float | `1.2` for Wolof, `1.0` for Pulaar | Speech speed, range `0.5`–`2.0` (higher = faster) |
 | `pitch`   | float | `0.0`   | Pitch shift, range `-1.0`–`1.0` (negative = lower, positive = higher) |
 
 Returns an `audio/wav` file.
@@ -172,10 +172,10 @@ speech.write_to_file("output.wav")
 | Route | Model | Parameters |
 |-------|-------|------------|
 | `POST /v1/audio/transcriptions` | `m-kiriku-asr` | `language` (optional): `wolof`/`wo`, `pulaar`/`ff`, `serer`/`srr`; `response_format`: `json` (default) or `text` |
-| `POST /v1/audio/speech` | `kiriku-tts` | `voice`: `wolof` or `pulaar`; `speed`: `0.0`–`2.0`, defaults as for `/synthesize`; `response_format`: `wav` only; `pitch` via `extra_body` |
+| `POST /v1/audio/speech` | `kiriku-tts` | `voice`: `wolof` or `pulaar`; `speed`: `0.5`–`2.0`, defaults as for `/synthesize`; `response_format`: `wav` only; `pitch` via `extra_body` |
 | `GET /v1/models` | | Lists both models |
 
-Differences from the OpenAI API: speech is returned as WAV only, and `speed` ranges from `0.0` to `2.0`. Other model names (such as `whisper-1`) return a `404` naming the correct model.
+Differences from the OpenAI API: speech is returned as WAV only, and `speed` ranges from `0.5` to `2.0`. Other model names (such as `whisper-1`) return a `404` naming the correct model.
 
 Errors follow the OpenAI format (`{"error": {"message": ..., "type": ...}}`), so the SDK raises its usual exceptions (`AuthenticationError`, `BadRequestError`, `NotFoundError`, …).
 

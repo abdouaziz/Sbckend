@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Optional
 
 from backend.services.log import setup_logging, get_logger
-from backend.services.tts import tts_vocalizer, TTSException, DEFAULT_SPEED_BY_LANGUAGE, DEFAULT_PITCH, MAX_TTS_CHARS
+from backend.services.tts import tts_vocalizer, TTSException, TTSOverloaded, DEFAULT_SPEED_BY_LANGUAGE, DEFAULT_PITCH, MAX_TTS_CHARS
 from backend.services.stt import transcribe_bytes, STTException, MAX_AUDIO_SECONDS
 from backend.api_docs import build_description
 from backend.middleware.limits import LimitsMiddleware
@@ -97,6 +97,8 @@ async def synthesize(text: str, language: str = "wolof", speed: Optional[float] 
     except TTSException as e:
         logger.error(f"{e}")
         raise HTTPException(status_code=400, detail=str(e))
+    except TTSOverloaded:
+        raise HTTPException(status_code=503, detail="Speech synthesis is temporarily unavailable, retry in a few seconds.")
 
 @app.post("/transcribe", dependencies=[Depends(require_api_key)], include_in_schema=False)
 def transcribe(file: UploadFile = File(...), language: Optional[str] = None):

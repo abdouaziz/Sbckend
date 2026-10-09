@@ -95,7 +95,7 @@ curl {base_url}/v1/audio/speech -H "Authorization: Bearer sk-kiriku-..." \\
 
 | Route | `model` | Languages | Notes |
 |---|---|---|---|
-| `POST /v1/audio/speech` | `kiriku-tts` | `voice`: `wolof`, `pulaar` (no Serer voice) | WAV only; `speed` from 0 to 2; `pitch` from -1 to 1 (SDK: `extra_body={{"pitch": 0.2}}`) |
+| `POST /v1/audio/speech` | `kiriku-tts` | `voice`: `wolof`, `pulaar` (no Serer voice) | WAV only; `speed` from 0.5 to 2; `pitch` from -1 to 1 (SDK: `extra_body={{"pitch": 0.2}}`) |
 | `POST /v1/audio/transcriptions` | `m-kiriku-asr` | `language`: `wolof`/`wo`, `pulaar`/`ff`, `serer`/`srr`, or omit it | Up to {max_audio_seconds:g} s; wav, mp3, ogg…; `response_format`: `json` or `text` |
 | `GET /v1/models` | | | Lists both models |
 

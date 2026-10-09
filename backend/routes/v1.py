@@ -12,7 +12,7 @@ from starlette.background import BackgroundTask
 
 from backend.routes.auth import require_api_key
 from backend.services.stt import STTException, transcribe_bytes_with_duration
-from backend.services.tts import DEFAULT_PITCH, DEFAULT_SPEED_BY_LANGUAGE, TTSException, tts_vocalizer
+from backend.services.tts import DEFAULT_PITCH, DEFAULT_SPEED_BY_LANGUAGE, TTSException, TTSOverloaded, tts_vocalizer
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(require_api_key)])
 
@@ -107,13 +107,16 @@ class SpeechRequest(BaseModel):
         description="Language of the voice: `wolof` (or `wo`), `pulaar` (or `ff`, `pu`). No Serer voice.",
         json_schema_extra={"enum": ["wolof", "wo", "pulaar", "ff", "pu"], "example": "wolof"},
     )
+    # Without an example, Swagger's "Try it out" fills in 0, which is not a valid speed.
     speed: Optional[float] = Field(
-        None, description="From 0 to 2, higher is faster. Default: 1.2 for Wolof, 1.0 for Pulaar."
+        None, description="From 0.5 to 2, higher is faster. Default: 1.2 for Wolof, 1.0 for Pulaar.",
+        json_schema_extra={"example": 1.2},
     )
     response_format: str = Field("wav", description="Only `wav` is supported.", json_schema_extra={"enum": ["wav"]})
     # Not part of the OpenAI API: pass it with extra_body={"pitch": 0.2}.
     pitch: Optional[float] = Field(
-        None, description="From -1 to 1: shifts the voice by up to 4 semitones. SDK: `extra_body={\"pitch\": 0.2}`."
+        None, description="From -1 to 1: shifts the voice by up to 4 semitones. SDK: `extra_body={\"pitch\": 0.2}`.",
+        json_schema_extra={"example": 0.0},
     )
 
 
@@ -140,6 +143,8 @@ def create_speech(body: SpeechRequest, request: Request):
         audio_file_path = tts_vocalizer(body.input, voice, speed=speed, pitch=pitch)
     except TTSException as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except TTSOverloaded:
+        raise HTTPException(status_code=503, detail="Speech synthesis is temporarily unavailable, retry in a few seconds.")
     inference = time.perf_counter() - start
     request.state.usage = {
         "model": body.model,

@@ -25,6 +25,9 @@ for _module in ("TTS.utils.synthesizer", "TTS.tts.utils.text.tokenizer"):
 
 DEFAULT_SPEED_BY_LANGUAGE = {"wolof": 1.2, "pulaar": 1.0}
 DEFAULT_PITCH = 0.0
+# Below 0.5 the audio grows without bound: speed=0 turns a 27-character sentence into
+# several minutes of audio and exhausts the GPU memory (Sunuchat, 2026-10-09).
+MIN_SPEED, MAX_SPEED = 0.5, 2.0
 # One request synthesizes at most this many characters (longer texts: split client-side).
 MAX_TTS_CHARS = int(os.environ.get("MAX_TTS_CHARS", 512))
 
@@ -59,6 +62,10 @@ _synthesizers: dict[str, Synthesizer] = {}
 _synthesizer_locks: dict[str, threading.Lock] = {}
 
 PITCH_SEMITONE_RANGE = 4.0  # pitch=-1.0 -> -4 semitones, pitch=1.0 -> +4 semitones
+
+
+class TTSOverloaded(Exception):
+    """The GPU ran out of memory: a server-side condition, not a client error."""
 
 
 class TTSException(Exception):
@@ -111,7 +118,7 @@ def verify_pitch(value):
     return False
 
 def verify_speed(value):
-    if value >= 0.0 and value <= 2.0:
+    if value >= MIN_SPEED and value <= MAX_SPEED:
         return True 
     return False
 
@@ -139,13 +146,16 @@ def tts_vocalizer(text: str, language: str = "wolof" , speed:float=1.0 , pitch:f
     # Never log the text itself: it is user content.
     logger.info(f"Synthesizing {len(translation)} characters ({language})")
 
+    if not verify_speed(speed):
+        raise TTSException(f"Invalid speed: {speed}. Use a value from {MIN_SPEED:g} to {MAX_SPEED:g}, "
+                           "or omit it for the default (1.2 for Wolof, 1.0 for Pulaar).")
+    if not verify_pitch(pitch):
+        raise TTSException(f"Invalid pitch: {pitch}. Use a value from -1 to 1, or omit it (0, the natural voice).")
+
     synthesizer = get_synthesizer(language)
 
-    if not verify_audio_setting(pitch, speed):
-        raise TTSException(f"Invalid audio setting pitch: {pitch} speed: {speed}")
-
     # VITS length_scale is inverse to speed: lower length_scale -> faster speech.
-    length_scale = 1.0 / max(speed, 1e-3)
+    length_scale = 1.0 / speed
 
     try:
         with _synthesizer_locks[language]:
@@ -159,6 +169,11 @@ def tts_vocalizer(text: str, language: str = "wolof" , speed:float=1.0 , pitch:f
                 n_steps=pitch * PITCH_SEMITONE_RANGE,
             )
 
+    except torch.cuda.OutOfMemoryError as e:
+        logger.error(f"Error during speech synthesis: {e}")
+        # Give the cached blocks back, so the next requests are not refused in turn.
+        torch.cuda.empty_cache()
+        raise TTSOverloaded() from e
     except Exception as e:
         logger.error(f"Error during speech synthesis: {e}")
         raise TTSException(f"Failed to synthesize speech: {e}") from e
