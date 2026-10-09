@@ -141,8 +141,10 @@ Errors follow the OpenAI format, so the SDK raises its usual exceptions:
   lowercased for you; **any other character outside the alphabet is silently
   skipped**, not spelled out. Pulaar needs its own letters (`ɓ ɗ ƴ ŋ`): writing
   `b` for `ɓ` changes the pronunciation.
-- **Numbers**: only 0 to 10 are converted to words today (in French: "3" →
-  "trois"). Write larger numbers in words, otherwise they are skipped.
+- **Numbers**: the models read the digits 0 to 9, but not larger numbers,
+  which are skipped. Write numbers in words, in the language of the voice (not
+  in French): in Wolof, "benn, ñaar, ñett…" to count, and amounts in dërëm
+  (1 dërëm = 5 FCFA). Automatic conversion is in preparation.
 - {max_tts_chars} characters per request, about 45 s of audio. For longer texts,
   split by sentence and chain the requests.
 - `speed`: the default for Wolof is 1.2, chosen because it sounds more natural;

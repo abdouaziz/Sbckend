@@ -1,6 +1,5 @@
 import importlib
 import os
-import re
 import tempfile
 import threading
 import numpy as np
@@ -55,12 +54,6 @@ def _model_path(language: str) -> str:
 def _config_path(language: str) -> str:
     return os.path.join(_CHECKPOINTS_DIR, language, "config.json")
 
-NUMBER_WORDS = {
-    "0": "zéro", "1": "un", "2": "deux", "3": "trois", "4": "quatre",
-    "5": "cinq", "6": "six", "7": "sept", "8": "huit", "9": "neuf", "10": "dix",
-}
-
-_NUMBER_PATTERN = re.compile(r"\d+")
 
 _synthesizers: dict[str, Synthesizer] = {}
 _synthesizer_locks: dict[str, threading.Lock] = {}
@@ -109,8 +102,6 @@ def get_synthesizer(language: str) -> Synthesizer:
         return _synthesizers[language]
 
 
-def convert_numbers_to_french(text: str) -> str:
-    return _NUMBER_PATTERN.sub(lambda m: NUMBER_WORDS.get(m.group(), m.group()), text)
 
 
 
@@ -141,7 +132,10 @@ def tts_vocalizer(text: str, language: str = "wolof" , speed:float=1.0 , pitch:f
     if len(text) > MAX_TTS_CHARS:
         raise TTSException(f"Text too long: {len(text)} characters, the maximum is {MAX_TTS_CHARS}")
 
-    translation = convert_numbers_to_french(text.lower())
+    # Digits are left as they are: the models read 0 to 9 themselves and expect Wolof, so
+    # turning them into French words ("3" -> "trois") made things worse. Numbers above 9
+    # are not pronounced: a Wolof number speller is planned (PR #1, with AI Hub).
+    translation = text.lower()
     # Never log the text itself: it is user content.
     logger.info(f"Synthesizing {len(translation)} characters ({language})")
 

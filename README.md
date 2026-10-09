@@ -13,7 +13,6 @@ A FastAPI backend for speech technology in Senegalese languages:
 - All routes except `/ping` and `/admin` require an `sk-kiriku-...` API key
 - `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/models`: the same features behind the OpenAI API format, authenticated with `sk-kiriku-...` keys
 - `/admin/keys`: create, list and revoke API keys
-- Automatic conversion of digits to spoken French number words before synthesis
 
 ## Requirements
 
@@ -458,9 +457,11 @@ the first time only (all cached on the volume), then starts uvicorn.
 
 Known issues and planned improvements, most useful first.
 
-- [ ] **Numbers in text-to-speech.** Only 0 to 10 are converted to words; the TTS alphabet has no digits, so any
-  other number is silently skipped ("le 15 mars 2026" loses its numbers). Convert every number with
-  `num2words(lang="fr")`, ordinals and years included.
+- [ ] **Numbers in text-to-speech, in Wolof.** The models read the digits 0 to 9 but skip larger numbers, unseen in
+  training. The code used to turn 0-10 into French words, which the Wolof models do not expect: digits are now left as
+  they are. Plan (with AI Hub, PR #1): a Wolof number speller built on `num2words`, with a counting mode (benn, ñaar,
+  ñett…) and an amount mode (dërëm, 1 dërëm = 5 FCFA), validated on reference examples from a Wolof speaker; then
+  Pulaar.
 - [x] **`<|wo|>` in transcriptions.** The language tag the decoder starts with sometimes ends up at the start of the
   text (2 Wolof clips out of 8 in our benchmark), because `skip_special_tokens` does not cover the language tokens
   added to the tokenizer. Stripped from the output since this fix.
