@@ -455,51 +455,9 @@ the first time only (all cached on the volume), then starts uvicorn.
 
 ## Roadmap
 
-Known issues and planned improvements, most useful first.
-
-- [ ] **Numbers in text-to-speech, in Wolof.** The models read the digits 0 to 9 but skip larger numbers, unseen in
-  training. The code used to turn 0-10 into French words, which the Wolof models do not expect: digits are now left as
-  they are. Plan (with AI Hub, PR #1): a Wolof number speller built on `num2words`, with a counting mode (benn, ñaar,
-  ñett…) and an amount mode (dërëm, 1 dërëm = 5 FCFA), validated on reference examples from a Wolof speaker; then
-  Pulaar.
-- [x] **`<|wo|>` in transcriptions.** The language tag the decoder starts with sometimes ends up at the start of the
-  text (2 Wolof clips out of 8 in our benchmark), because `skip_special_tokens` does not cover the language tokens
-  added to the tokenizer. Stripped from the output since this fix.
-- [x] **Load the models at startup.** Today each model loads on the first request that needs it: the first
-  transcription after a restart took ~30 s. Now loaded in a background thread at startup, with a warm-up
-  inference each; `/ping` answers `loading` until they are ready.
-- [ ] **Faster speech-to-text.** Move to faster-whisper (CTranslate2) with batched inference, as the model card
-  suggests; measure on the target GPU before adopting it.
-- [ ] **Smaller audio responses.** Speech is returned as WAV only; add `mp3`/`opus` (`response_format`) to cut
-  download time, which dominates on long sentences.
-- [ ] **Opt-in data collection for future model training** (decided in principle, governance first). What is worth
-  keeping is the audio sent for transcription with its output, and the text sent for synthesis — not the
-  synthesized WAV, which is the model's own voice. Before any code: who owns the dataset (AI Hub, Vie Publique),
-  purpose, access, retention, publication and licence, and a legal check (voice is personal data: Senegal law
-  2008-12, CDP). Then: an opt-in flag per key, off by default and set from `/admin/ui` once the team agreed in
-  writing (no retroactive collection; teams must have the consent of the people they record); writes after the
-  response is sent (no latency impact); a regular export to safe storage (e.g. a private Hugging Face dataset) since
-  `/workspace` is tied to one machine; deletion of a team's data on request.
-- [ ] **Make this repository the public reference integration of Kiriku** (pending AI Hub's decision), so that
-  anyone can clone it to serve the models on their own infrastructure. Before opening it: a `LICENSE` chosen by
-  AI Hub (none today, so no reuse is allowed), checked against the model and Coqui TTS (MPL-2.0) licences; merge
-  `test` into `main` and make it the default branch (`dev` still holds the first version); purge `.env` and
-  `data/api_keys.db` from the history (`git filter-repo`, force-push, coordinated with everyone who cloned it);
-  a deployment guide for a RunPod pod and the latest environment variables. Then move it to a GitHub organization
-  (AI Hub Senegal) rather than a personal account.
-- [ ] **Deploy from a private repository.** The RunPod pod fetches the code anonymously at startup, so it only
-  works while this repository is public. Two ways out: (1) a fine-grained GitHub token, created by the repository
-  owner, read-only on this repository, given to the pod as `GITHUB_TOKEN` and used in the fetch URL, with `set +x`
-  around it so it never reaches the logs; (2) better, a GitHub Action that builds the image on each push and
-  publishes it privately on GHCR, pulled by RunPod with registry credentials: restarts in seconds instead of
-  reinstalling packages, and a fixed, reproducible version.
-- [ ] **Rotate `logs/app.log`.** It is written without rotation next to the code, on the persistent volume
-  (`/workspace/app/logs` on the pod), so it grows forever. Watch it with the dashboard disk figure; switch to a
-  `RotatingFileHandler` (e.g. 3 × 10 MB) if it grows.
-- [ ] **Daily quotas per key** (audio minutes, characters), on top of the rate limits.
-- [ ] **Shared key store** if the API ever runs on several replicas: keys, usage and rate limits are local to one
-  process today.
-- [ ] **Tests** of the routes with stubbed models, beyond the middleware and usage tests.
+Known issues and planned improvements, most of them reported by the teams of the Kiriku challenge, are tracked in
+[ROADMAP.md](ROADMAP.md) (in French): a summary table with the status of each item, then the details (problem,
+facts, plan).
 
 ## Project structure
 
