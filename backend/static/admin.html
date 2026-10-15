@@ -290,9 +290,11 @@ function renderFailures(report) {
 const errorCodes = (statuses) => Object.entries(statuses || {}).filter(([code]) => Number(code) >= 400)
   .map(([code, n]) => `${code}×${n}`).join(" ") || "—";
 
+// Key preview and revoke button come first, so that a screenshot cropped on the
+// left shares the team figures without any key or admin control.
 function renderKeys(report) {
   table("keys",
-    [["Équipe"], ["Clé"], ["État"], [""], ["Requêtes", 1], ["Erreurs", 1], ["Refus", 1], ["Codes d'erreur"], ["Audio ASR", 1], ["Audio TTS", 1], ["Latence p50", 1], ["Dernier usage"], ["Créée le"]],
+    [["Clé"], [""], ["Équipe"], ["État"], ["Requêtes", 1], ["Erreurs", 1], ["Refus", 1], ["Codes d'erreur"], ["Audio ASR", 1], ["Audio TTS", 1], ["Latence p50", 1], ["Dernier usage"], ["Créée le"]],
     report.keys.map((k) => {
       const badge = el("span", k.revoked_at ? "révoquée" : "active", `badge ${k.revoked_at ? "revoked" : "active"}`);
       let action = el("span", "");
@@ -300,7 +302,7 @@ function renderKeys(report) {
         action = el("button", "Révoquer", "danger");
         action.addEventListener("click", () => revoke(k));
       }
-      return [k.name, el("code", k.key_preview), badge, action, fmt(k.requests), fmt(k.errors), fmt(k.rate_limited),
+      return [el("code", k.key_preview), action, k.name, badge, fmt(k.requests), fmt(k.errors), fmt(k.rate_limited),
         errorCodes(k.statuses), fmtMin(k.audio_seconds_in), fmtMin(k.audio_seconds_out), fmtMs(k.latency_ms_p50), fmtDate(k.last_used_at), fmtDate(k.created_at)];
     }));
 }
